@@ -1,0 +1,31 @@
+# lite: 노드 1개. Docker ~ CI/CD (10-01 ~ 10-19)
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: lab
+containerdConfigPatches:        # docker.io 이미지는 mirror.gcr.io 경유 (certs.d/docker.io/hosts.toml)
+  - |-
+    [plugins."io.containerd.cri.v1.images".registry]
+      config_path = "/etc/containerd/certs.d"
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+    extraMounts:                 # lab 폴더에서 make up 할 때의 상대 경로
+      - hostPath: ./kind/certs.d
+        containerPath: /etc/containerd/certs.d
+        readOnly: true
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:           # Ingress를 localhost:80/443으로
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+      - containerPort: 30080       # API Gateway(Envoy Gateway) NodePort → VM의 8080 (10-26~)
+        hostPort: 8080
+        protocol: TCP

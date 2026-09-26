@@ -1,0 +1,15 @@
+# Istio 1.31 (kind, 실습 VM 4코어용) — 10-21. 인그레스는 Traefik을 쓰므로 istiod만 (minimal)
+# 설치: istioctl install -f istio/istio.yaml -y
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  profile: minimal
+  values:
+    pilot:
+      resources:
+        requests: {cpu: 100m, memory: 256Mi}
+    global:
+      proxy:                      # 사이드카 한 개당 (기본 요청 100m은 파드 12개면 1.2코어)
+        resources:
+          requests: {cpu: 10m, memory: 64Mi}
+          limits: {cpu: 500m, memory: 256Mi}

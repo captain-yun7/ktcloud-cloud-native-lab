@@ -1,0 +1,6 @@
+workflow-aggregator
+git
+credentials-binding
+configuration-as-code
+pipeline-stage-view
+pipeline-graph-view

@@ -1,0 +1,40 @@
+# kube-prometheus-stack (kind full, 실습 VM 16GB) — 10-22 오후부터. make monitoring
+# 접속: http://grafana.localhost (admin / 아래 비밀번호), http://prometheus.localhost, http://alertmanager.localhost
+grafana:
+  adminPassword: lab-grafana            # 실습용. 운영에서는 Secret으로
+  additionalDataSources:               # 10-26에 설치하는 Loki (설치 전에는 이 데이터 소스만 오류)
+  - name: Loki
+    type: loki
+    url: http://loki.monitoring:3100
+    access: proxy
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts: [grafana.localhost]
+prometheus:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts: [prometheus.localhost]
+  prometheusSpec:
+    retention: 2d
+    # 차트가 만든 것만이 아니라 모든 네임스페이스의 ServiceMonitor·PodMonitor·PrometheusRule을 읽는다
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests: {cpu: 200m, memory: 512Mi}
+alertmanager:
+  alertmanagerSpec:
+    alertmanagerConfigSelector: {}           # 모든 네임스페이스의 AlertmanagerConfig를 읽는다 (10-26)
+    alertmanagerConfigMatcherStrategy:
+      type: None                             # 경보에 namespace 라벨이 없어도 적용
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts: [alertmanager.localhost]
+# kind의 제어 영역 구성 요소는 127.0.0.1에만 열려 있어 수집이 안 된다 → 꺼서 가짜 경보(TargetDown)를 없앤다
+kubeControllerManager: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeEtcd: {enabled: false}
+kubeProxy: {enabled: false}

@@ -1,0 +1,11 @@
+# Argo CD (kind용). UI는 Traefik으로 http://argocd.localhost — 10-19
+dex:
+  enabled: false            # 외부 로그인 연동은 쓰지 않는다
+configs:
+  params:
+    server.insecure: true   # TLS는 Ingress 앞단에서 (실습에서는 http)
+server:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: argocd.localhost

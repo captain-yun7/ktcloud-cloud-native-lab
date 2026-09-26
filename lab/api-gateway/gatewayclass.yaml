@@ -1,0 +1,34 @@
+# Envoy Gateway의 "인프라 제공자" 몫 — make envoy-gateway가 적용한다 (10-26 오후)
+# kind에는 LoadBalancer가 없으므로 Envoy를 NodePort 30080으로 열고, kind/*.yaml의 extraPortMappings가 VM의 8080으로 연결한다
+# externalTrafficPolicy: Cluster — 기본값 Local이면 Envoy 파드가 뜬 노드에서만 응답한다(2026-09-26 s30 확인)
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: kind-nodeport
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+        externalTrafficPolicy: Cluster
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+              - port: 80
+                nodePort: 30080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: kind-nodeport
+    namespace: envoy-gateway-system

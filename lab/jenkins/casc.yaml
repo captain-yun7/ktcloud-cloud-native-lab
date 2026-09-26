@@ -1,0 +1,16 @@
+# 관리자 계정은 make jenkins가 만든 비밀번호(환경변수)로 설정된다
+jenkins:
+  systemMessage: "kt cloud TECH UP 실습용 Jenkins"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+unclassified:
+  location:
+    url: "http://localhost:8081/"

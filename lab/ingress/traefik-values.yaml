@@ -1,0 +1,28 @@
+# Traefik Ingress 컨트롤러 (kind용). ingress-nginx는 2026-03 보관(archived)되어 Traefik 사용 — 2026-09-26 결정
+# kind 노드의 80/443(kind/*.yaml extraPortMappings)을 VM의 80/443으로 연결한다
+service:
+  spec:
+    type: ClusterIP          # 차트 41은 service.spec.type (service.type은 무시되어 LoadBalancer <pending>이었음, 2026-09-26 수정)
+metrics:
+  prometheus:
+    service:
+      enabled: true          # 지표 전용 Service traefik-metrics:9100 — 10-23 ServiceMonitor 실습
+ports:
+  web:
+    hostPort: 80
+  websecure:
+    hostPort: 443
+nodeSelector:
+  ingress-ready: "true"
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+ingressClass:
+  isDefaultClass: true
+# hostPort 80/443은 노드에 하나만 뜰 수 있다 → 새 파드를 먼저 띄우는 기본 방식이면 재시작이 Pending으로 멈춘다(2026-09-26 s30 확인)
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
