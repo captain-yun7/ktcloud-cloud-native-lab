@@ -44,5 +44,5 @@ if [ "${1:-}" = "--smoke" ]; then
   else bad "kind 클러스터 생성 실패 (docker 권한/메모리 확인)"; fi
 fi
 say "=== 결과: 정상 $ok / 주의 $warn / 문제 $fail ==="
-[ $fail -eq 0 ] && say "→ 실습 가능. doctor-report.txt 를 제출하세요." || say "→ [문제] 항목을 해결한 뒤 다시 실행하세요. 안 되면 doctor-report.txt 를 첨부해 질문 채널에 올리세요."
+[ $fail -eq 0 ] && say "→ 실습 가능. doctor-report.txt 를 제출하세요." || say "→ [문제] 항목을 해결한 뒤 다시 실행하세요. 안 되면 doctor-report.txt 내용을 Discord에 올리세요."
 exit $fail
