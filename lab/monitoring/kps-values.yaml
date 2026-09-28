@@ -1,8 +1,8 @@
-# kube-prometheus-stack (kind full, 실습 VM 16GB) — 10-22 오후부터. make monitoring
+# kube-prometheus-stack (kind full, 실습 VM 16GB) — 모니터링 과목부터. make monitoring
 # 접속: http://grafana.localhost (admin / 아래 비밀번호), http://prometheus.localhost, http://alertmanager.localhost
 grafana:
   adminPassword: lab-grafana            # 실습용. 운영에서는 Secret으로
-  additionalDataSources:               # 10-26에 설치하는 Loki (설치 전에는 이 데이터 소스만 오류)
+  additionalDataSources:               # 모니터링 과목 후반에 설치하는 Loki (설치 전에는 이 데이터 소스만 오류)
   - name: Loki
     type: loki
     url: http://loki.monitoring:3100
@@ -26,7 +26,7 @@ prometheus:
       requests: {cpu: 200m, memory: 512Mi}
 alertmanager:
   alertmanagerSpec:
-    alertmanagerConfigSelector: {}           # 모든 네임스페이스의 AlertmanagerConfig를 읽는다 (10-26)
+    alertmanagerConfigSelector: {}           # 모든 네임스페이스의 AlertmanagerConfig를 읽는다 (알림 실습)
     alertmanagerConfigMatcherStrategy:
       type: None                             # 경보에 namespace 라벨이 없어도 적용
   ingress:

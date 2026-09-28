@@ -1,4 +1,4 @@
-# Loki 3.6 단일 바이너리(실습용) — 10-26. 저장소는 파드 안 파일시스템, 인증 없음
+# Loki 3.6 단일 바이너리(실습용) — 모니터링 과목. 저장소는 파드 안 파일시스템, 인증 없음
 deploymentMode: SingleBinary
 loki:
   auth_enabled: false

@@ -6,7 +6,7 @@ service:
 metrics:
   prometheus:
     service:
-      enabled: true          # 지표 전용 Service traefik-metrics:9100 — 10-23 ServiceMonitor 실습
+      enabled: true          # 지표 전용 Service traefik-metrics:9100 — 모니터링 과목 ServiceMonitor 실습
 ports:
   web:
     hostPort: 80

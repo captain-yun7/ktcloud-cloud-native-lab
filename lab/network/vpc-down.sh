@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 10-28·10-29 네트워킹 실습 정리 — 네임스페이스, VM 쪽 선, 이 실습이 넣은 iptables 규칙을 지운다
+# 네트워킹 과목 실습 정리 — 네임스페이스, VM 쪽 선, 이 실습이 넣은 iptables 규칙을 지운다
 [ "$(id -u)" = 0 ] || { echo "sudo로 실행하세요"; exit 1; }
 docker rm -f lab-lb >/dev/null 2>&1
 for n in rt web db cache web-b; do ip netns pids $n 2>/dev/null | xargs -r kill 2>/dev/null; ip netns del $n 2>/dev/null; done

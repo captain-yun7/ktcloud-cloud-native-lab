@@ -1,4 +1,4 @@
-# Argo CD (kind용). UI는 Traefik으로 http://argocd.localhost — 10-19
+# Argo CD (kind용). UI는 Traefik으로 http://argocd.localhost — CI/CD 과목
 dex:
   enabled: false            # 외부 로그인 연동은 쓰지 않는다
 configs:

@@ -1,4 +1,4 @@
-# Grafana Alloy — 파드 로그를 쿠버네티스 API로 읽어 Loki로 보낸다 (10-26). 수집기는 하나(Deployment)
+# Grafana Alloy — 파드 로그를 쿠버네티스 API로 읽어 Loki로 보낸다 (로그 실습). 수집기는 하나(Deployment)
 controller:
   type: deployment
   replicas: 1

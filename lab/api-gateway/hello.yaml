@@ -1,4 +1,4 @@
-# 10-26 실습 3(라우팅 규칙)용 — 응답이 "hello v1" / "hello v2" 한 줄이라 어느 쪽으로 갔는지 바로 보인다
+# API Gateway 라우팅 규칙 실습용 — 응답이 "hello v1" / "hello v2" 한 줄이라 어느 쪽으로 갔는지 바로 보인다
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: hello-v1, namespace: api}

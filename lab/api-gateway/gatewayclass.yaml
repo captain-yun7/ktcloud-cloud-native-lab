@@ -1,4 +1,4 @@
-# Envoy Gateway의 "인프라 제공자" 몫 — make envoy-gateway가 적용한다 (10-26 오후)
+# Envoy Gateway의 "인프라 제공자" 몫 — make envoy-gateway가 적용한다 (API Gateway 과목)
 # kind에는 LoadBalancer가 없으므로 Envoy를 NodePort 30080으로 열고, kind/*.yaml의 extraPortMappings가 VM의 8080으로 연결한다
 # externalTrafficPolicy: Cluster — 기본값 Local이면 Envoy 파드가 뜬 노드에서만 응답한다(2026-09-26 s30 확인)
 apiVersion: gateway.envoyproxy.io/v1alpha1

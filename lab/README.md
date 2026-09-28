@@ -12,9 +12,9 @@ make doctor       # 환경 점검 → doctor-report.txt 제출
 ## 매일
 ```bash
 make up              # 클러스터 생성 (기본 lite: 노드 1개)
-make up PROFILE=full # Service Mesh(10-20)부터: 노드 3개 (로컬은 메모리 8GB 이상)
+make up PROFILE=full # Service Mesh 과목부터: 노드 3개 (로컬은 메모리 8GB 이상)
 make status
 make down            # 끝나면 삭제 (자원 반환)
 ```
-- Ingress(10-12부터): `make ingress`로 Traefik 설치 → `http://<이름>.localhost`로 열린다 (ingress-nginx는 2026-03 지원 종료)
+- Ingress(Kubernetes 과목 Ingress 실습부터): `make ingress`로 Traefik 설치 → `http://<이름>.localhost`로 열린다 (ingress-nginx는 2026-03 지원 종료)
 - 망가지면 `make reset` — 몇 분이면 새 클러스터

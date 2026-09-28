@@ -1,4 +1,4 @@
-# full: 컨트롤플레인 1 + 워커 2. Service Mesh(10-20)부터 — 메시·모니터링·게이트웨이
+# full: 컨트롤플레인 1 + 워커 2. Service Mesh 과목부터 — 메시·모니터링·게이트웨이
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: lab
@@ -26,7 +26,7 @@ nodes:
       - containerPort: 443
         hostPort: 443
         protocol: TCP
-      - containerPort: 30080       # API Gateway(Envoy Gateway) NodePort → VM의 8080 (10-26~)
+      - containerPort: 30080       # API Gateway(Envoy Gateway) NodePort → VM의 8080 (API Gateway 과목)
         hostPort: 8080
         protocol: TCP
   - role: worker

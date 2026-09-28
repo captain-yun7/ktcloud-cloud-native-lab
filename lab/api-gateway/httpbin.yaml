@@ -1,4 +1,4 @@
-# 따라 하기용 백엔드 — 받은 요청(헤더·경로)을 JSON으로 돌려준다. /delay/N, /status/N, /unstable 도 있다
+# 실습용 백엔드 — 받은 요청(헤더·경로)을 JSON으로 돌려준다. /delay/N, /status/N, /unstable 도 있다
 apiVersion: apps/v1
 kind: Deployment
 metadata:
