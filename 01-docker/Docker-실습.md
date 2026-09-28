@@ -1,29 +1,208 @@
 # Docker — 실습
 
-> 검증: 2026-09-25, s30(Ubuntu 24.04, 4코어/16GB), Docker 29.8.1 / Compose v5.5.1 / buildx 0.37.1, Online Boutique v0.10.7 (실습 4~6·10은 2026-09-27, 확인 문제 정답은 2026-09-28 s30 실측)
+> 검증: 2026-09-25, s30(Ubuntu 24.04, 4코어/16GB), Docker 29.8.1 / Compose v5.5.1 / buildx 0.37.1, Online Boutique v0.10.7 (실습 7~9·13은 2026-09-27, 확인 문제 정답은 2026-09-28 s30 실측). 실습 1~3은 2026-09-29 s30에서 확인
 > 모든 명령은 본인 VM(`ssh ktc-sNN`)에서 실행합니다. 교안에 **실습 안내** 슬라이드가 나오면 이 문서의 해당 실습을 처음부터 끝까지 스스로 진행합니다. 막히면 Discord에 질문합니다.
 > 실습마다 **목표** → 명령과 설명 → **끝났는지 확인** → **확인 문제** 순서입니다. 확인 문제는 방금 한 명령을 조금 바꿔 보는 문제이고, 필요한 명령은 모두 그 실습까지 나왔습니다.
+> 실습 1~3(네트워크 기초, 셸 조합, nano)은 Docker 설치 전 기본기입니다. 리눅스·Git의 나머지는 교안 02장 설명으로 다룹니다.
 
 ## 흐름
 | 장 | 실습 | 무엇을 하나 |
 |---|---|---|
-| 01 | — | 리눅스·Git 기초 (설명만) |
-| 02 | — | 컨테이너 개념 (설명만) |
-| 03 | 실습 1~6 | 설치, 첫 컨테이너, nginx 띄우기, 컨테이너 다루기, 이미지 정리 |
-| 04 | 실습 7 | 컨테이너가 VM의 프로세스임을 확인 |
-| 05 | 실습 8~11 | 사라지는 파일시스템, 레이어, 첫 Dockerfile, 샘플앱 받기 |
-| 06 | 미션 1 | [Docker-미션.md 미션 1](./Docker-미션.md) — frontend 이미지 빌드 |
-| 07 | 실습 12 | 싱글스테이지와 멀티스테이지 비교 |
-| 08 | 실습 13 | 네트워크 — 컨테이너 이름으로 찾기 |
-| 09 | 실습 14 | 첫 Compose |
-| 10 | 실습 15 | 볼륨 두 종류 |
-| 11 | 실습 16 | 레지스트리에 올리기 |
-| 12 | 미션 2 | [Docker-미션.md 미션 2](./Docker-미션.md) — Compose로 Online Boutique 조립 |
-| 13 | — | 정리 |
+| 01 | 실습 1 | 개발과 인프라, 네트워크 기초 — IP·포트·DNS·HTTP |
+| 02 | 실습 2~3 | 리눅스·Git 기초 — 셸 조합(파이프·리다이렉트·환경변수·종료 코드), 터미널 편집기 nano |
+| 03 | — | 컨테이너 개념 (설명만) |
+| 04 | 실습 4~9 | 설치, 첫 컨테이너, nginx 띄우기, 컨테이너 다루기, 이미지 정리 |
+| 05 | 실습 10 | 컨테이너가 VM의 프로세스임을 확인 |
+| 06 | 실습 11~14 | 사라지는 파일시스템, 레이어, 첫 Dockerfile, 샘플앱 받기 |
+| 07 | 미션 1 | [Docker-미션.md 미션 1](./Docker-미션.md) — frontend 이미지 빌드 |
+| 08 | 실습 15 | 싱글스테이지와 멀티스테이지 비교 |
+| 09 | 실습 16 | 네트워크 — 컨테이너 이름으로 찾기 |
+| 10 | 실습 17 | 첫 Compose |
+| 11 | 실습 18 | 볼륨 두 종류 |
+| 12 | 실습 19 | 레지스트리에 올리기 |
+| 13 | 미션 2 | [Docker-미션.md 미션 2](./Docker-미션.md) — Compose로 Online Boutique 조립 |
+| 14 | — | 정리 |
 
 ---
 
-## 실습 1. Docker 설치
+## 실습 1. 네트워크 기초 — 요청과 응답 보기
+
+**목표**: 내 VM에서 IP 주소, DNS, 포트, HTTP 상태 코드를 명령으로 직접 확인합니다. (교안 01장)
+
+실습용 폴더와 파일을 만듭니다. 명령의 뜻은 02장에서 봅니다. 그대로 붙여 넣으세요.
+
+```bash
+mkdir -p ~/basics && cd ~/basics
+echo "<h1>hello basics</h1>" > index.html
+```
+
+**① 내 VM의 IP와 DNS**
+
+```bash
+hostname -I                 # 내 VM의 IP 주소 → 10.10.1.N
+getent hosts github.com     # DNS에 이름을 물어 IP를 받음
+# 20.200.245.247  github.com   (IP는 때와 장소에 따라 다를 수 있음)
+```
+
+**② 웹 서버 띄우기 — 터미널 1**
+
+파이썬에 들어 있는 간단한 웹 서버를 8000번 포트로 띄웁니다. 지금 폴더(`~/basics`)의 파일을 돌려줍니다.
+
+```bash
+cd ~/basics
+python3 -m http.server 8000
+# Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
+```
+
+명령이 끝나지 않고 멈춰 있는 것이 정상입니다(요청을 기다리는 중). 이 터미널은 그대로 두고 **터미널을 하나 더** 엽니다 — VS Code는 터미널 창의 `+`, 그 밖에는 새 창에서 `ssh ktc-sNN`.
+
+**③ 기다리는 포트 보기 — 터미널 2**
+
+```bash
+ss -tln
+```
+
+출력 예(줄 순서·개수는 VM마다 다름). `Local Address:Port` 열의 콜론 뒤 숫자가 포트입니다.
+
+```
+State   Recv-Q  Send-Q   Local Address:Port   Peer Address:Port
+LISTEN  0       4096     127.0.0.53%lo:53          0.0.0.0:*
+LISTEN  0       5              0.0.0.0:8000        0.0.0.0:*
+LISTEN  0       4096           0.0.0.0:22          0.0.0.0:*
+```
+
+| 옵션 · 값 | 뜻 |
+|---|---|
+| `-t` `-l` `-n` | TCP 연결만 · 기다리는(LISTEN) 것만 · 이름 대신 숫자로 |
+| `:22` | SSH 서버 — 지금 접속해 있는 통로 |
+| `:8000` | 방금 띄운 웹 서버 |
+| `:53` | VM 안의 DNS 도우미 (127.0.0.53 = 이 VM 안에서만) |
+| `0.0.0.0` | 이 VM의 모든 주소로 오는 요청을 받음 |
+
+**④ 요청 보내고 상태 코드 보기 — 터미널 2**
+
+```bash
+curl localhost:8000              # 본문: <h1>hello basics</h1>
+curl -I localhost:8000           # 머리(헤더)만: HTTP/1.0 200 OK
+curl -I localhost:8000/nothing   # 없는 주소: HTTP/1.0 404 File not found
+curl -I 127.0.0.1:8000           # localhost = 127.0.0.1 → 200 OK
+curl -I https://github.com       # 인터넷의 서버 → HTTP/2 200
+```
+
+- `localhost`는 지금 이 컴퓨터 자신입니다. `127.0.0.1`과 같습니다
+- `-I`는 응답의 머리(헤더)만 보여 줍니다. 첫 줄의 숫자가 **상태 코드** — 200 성공, 404 없는 주소, 500 서버 오류
+
+터미널 1을 보면 방금 보낸 요청이 한 줄씩 찍혀 있습니다(`-I`는 `HEAD`, 그냥 `curl`은 `GET`으로 찍힘).
+
+```
+127.0.0.1 - - [28/Sep/2026 15:13:51] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Sep/2026 15:13:51] "HEAD /nothing HTTP/1.1" 404 -
+```
+
+다 봤으면 터미널 1에서 **Ctrl+C**로 웹 서버를 끕니다.
+
+**끝났는지 확인**: `curl -I localhost:8000`에 `200 OK`, `curl -I localhost:8000/nothing`에 `404`가 나오고, 터미널 1에 요청 줄이 찍혔으면 끝입니다.
+
+### 확인 문제
+1. 웹 서버를 끈 상태에서 `curl localhost:8000`을 하면 어떤 오류가 나오나요? 이때 `ss -tln`에 8000 줄이 있나요?
+2. 웹 서버를 이번에는 포트 8001로 띄우고(`python3 -m http.server 8001`), 다른 터미널에서 `curl -I localhost:8001/index.html`의 상태 코드를 확인하세요. 같은 때 `curl -I localhost:8000`은 어떻게 되나요? 확인이 끝나면 Ctrl+C로 끕니다.
+
+## 실습 2. 셸 조합 — 파이프 · 리다이렉트 · 환경변수 · 종료 코드
+
+**목표**: 명령을 이어 붙이고(`|`), 결과를 파일로 보내고(`>`, `>>`), 환경변수와 종료 코드를 확인합니다. Docker 실습에서 계속 쓰는 문법입니다. (교안 02장)
+
+```bash
+cd ~/basics
+cat /etc/os-release                  # 운영체제 정보 전부
+cat /etc/os-release | grep CODENAME  # CODENAME이 든 줄만
+# VERSION_CODENAME=noble
+# UBUNTU_CODENAME=noble
+```
+
+- `|`(파이프) = 앞 명령의 출력을 뒤 명령의 입력으로. `grep 글자` = 그 글자가 든 줄만 보여 줌
+- `noble`은 우분투 24.04의 코드명입니다. 실습 4의 Docker 설치 명령이 이 값을 꺼내 씁니다
+
+```bash
+echo "first" > note.txt      # > : 파일에 씀 (있던 내용은 지워짐)
+echo "second" >> note.txt    # >> : 파일 끝에 이어 씀
+cat note.txt                 # first / second 두 줄
+echo "new" > note.txt
+cat note.txt                 # new 한 줄만 남음
+```
+
+```bash
+echo $HOME                   # /home/lab
+echo $USER                   # lab
+export GREETING=hello        # 환경변수 만들기
+echo $GREETING               # hello
+env | grep GREETING          # GREETING=hello
+```
+
+- 환경변수 = 이름=값으로 둔 설정. `$이름`으로 꺼냅니다. `export`를 붙이면 이 셸에서 실행하는 프로그램도 읽을 수 있습니다(실습 8의 `docker run -e`가 컨테이너에 넣는 것도 환경변수)
+
+```bash
+ls note.txt
+echo $?                      # 0
+ls nothing.txt               # ls: cannot access 'nothing.txt': No such file or directory
+echo $?                      # 2
+grep new note.txt            # new
+echo $?                      # 0 (찾음)
+grep zzz note.txt            # (출력 없음)
+echo $?                      # 1 (못 찾음)
+```
+
+- `$?` = 바로 앞 명령의 **종료 코드**. 0이면 성공, 0이 아니면 실패입니다. `docker ps -a`의 `Exited (0)` 괄호 안 숫자도 종료 코드입니다
+
+**끝났는지 확인**: `cat note.txt`에 `new` 한 줄, `echo $GREETING`에 `hello`, `ls nothing.txt` 바로 뒤 `echo $?`에 `2`가 나오면 끝입니다.
+
+### 확인 문제
+1. `>>`로 `note.txt`에 `apple`, `banana` 두 줄을 이어 붙인 뒤 `cat note.txt | grep an`을 실행하세요. 무엇이 나오나요? 바로 뒤 `echo $?`의 값은?
+2. `export COURSE=docker`로 환경변수를 만들고, `echo "과목: $COURSE" > course.txt`로 파일을 만든 뒤 `cat course.txt`로 확인하세요.
+
+## 실습 3. 터미널 편집기 nano
+
+**목표**: 터미널 안에서 파일을 열고, 고치고, 저장하고, 빠져나옵니다. 미션 1에서 frontend 홈 화면 문구를 고칠 때 씁니다. (교안 02장)
+
+```bash
+cd ~/basics
+nano memo.txt                # 없는 파일이면 새로 만듦
+```
+
+화면 맨 아래 두 줄이 단축키 안내입니다. `^`는 **Ctrl** 키입니다(`^O` = Ctrl+O).
+
+```
+^G Help    ^O Write Out   ^W Where Is    ^K Cut    ...
+^X Exit    ^R Read File   ^\ Replace     ^U Paste  ...
+```
+
+1. 두 줄을 입력합니다: `hello nano`, `second line`
+2. **Ctrl+O** → 맨 아래에 `File Name to Write: memo.txt`가 나오면 **Enter** → `[ Wrote 2 lines ]`
+3. **Ctrl+X**로 나옵니다
+4. `cat memo.txt`로 두 줄을 확인합니다
+5. 다시 `nano memo.txt`로 열어 둘째 줄을 `edited line`으로 고칩니다. 이번에는 저장하지 않고 바로 **Ctrl+X** → `Save modified buffer?`에 **Y** → 파일 이름이 나오면 **Enter**
+6. `cat memo.txt` → `hello nano`, `edited line`
+
+| 할 일 | 키 |
+|---|---|
+| 저장 | Ctrl+O → Enter |
+| 종료 | Ctrl+X (저장 안 했으면 Y → Enter, 저장하지 않으려면 N) |
+| 찾기 · 줄 잘라내기 · 붙이기 | Ctrl+W · Ctrl+K · Ctrl+U |
+| 하던 것 취소 | Ctrl+C |
+
+**vi가 열렸을 때 빠져나오기** — `git commit`처럼 편집기를 여는 명령이 vi(vim)를 열 때가 있습니다. vi는 키 사용법이 달라 처음에는 나오기 어렵습니다. 한 번 들어갔다 나와 봅니다.
+
+```bash
+vi memo.txt
+```
+
+**Esc** → `:q!` 입력 → **Enter** = 저장하지 않고 나감. 저장하고 나가려면 `:wq`.
+
+**끝났는지 확인**: `cat memo.txt`에 `hello nano`, `edited line` 두 줄이 보이고, vi에서 `:q!`로 빠져나왔으면 끝입니다.
+
+### 확인 문제
+1. nano로 `~/basics/index.html`을 열어 내용을 `<h1>edited by nano</h1>`로 바꿔 저장하세요. 실습 1처럼 웹 서버(`python3 -m http.server 8000`)를 띄우고 다른 터미널에서 `curl localhost:8000`으로 바뀐 내용을 확인한 뒤, 웹 서버를 Ctrl+C로 끕니다.
+
+## 실습 4. Docker 설치
 
 **목표**: VM에 Docker를 설치하고 `sudo` 없이 `docker` 명령을 쓸 수 있게 합니다.
 
@@ -68,7 +247,7 @@ docker ps
 ### 확인 문제
 1. `groups` 명령으로 내 계정이 `docker` 그룹에 들어 있는지 확인하고, `docker version` 출력에서 Client 버전과 Server(엔진) 버전을 각각 찾으세요.
 
-## 실습 2. 첫 컨테이너
+## 실습 5. 첫 컨테이너
 
 **목표**: 컨테이너를 처음 실행해 보고, Docker가 이미지를 받아 컨테이너를 만드는 과정을 출력으로 확인합니다.
 
@@ -86,7 +265,7 @@ docker run --rm hello-world
 ### 확인 문제
 1. `hello-world`를 이번에는 `--rm` 없이 이름 `hello`(`--name hello`)로 실행하세요. 그다음 `docker ps -a`(멈춘 컨테이너까지 모두 보기)로 `hello`가 남아 있는지 확인하고, `docker rm hello`로 지우세요.
 
-## 실습 3. nginx 웹 서버 띄우기
+## 실습 6. nginx 웹 서버 띄우기
 
 **목표**: 웹 서버(nginx) 컨테이너를 백그라운드로 띄우고, VM 포트로 접속해 응답과 로그를 확인합니다.
 
@@ -108,18 +287,18 @@ docker logs -f web           # 실시간 (Ctrl+C로 빠져나옴)
 - `curl`은 터미널에서 웹 페이지를 받아 보는 명령입니다. HTML이 그대로 출력됩니다
 - 로그 맨 끝의 `"GET / HTTP/1.1" 200`이 방금 `curl`로 보낸 요청입니다
 
-`web`은 실습 8까지 계속 씁니다. **지우지 마세요.**
+`web`은 실습 11까지 계속 씁니다. **지우지 마세요.**
 
 **끝났는지 확인**: `docker ps`에 `web`이 `Up`으로 보이고, `curl localhost:8080`에 `Welcome to nginx!`가 나오면 끝입니다.
 
 ### 확인 문제
-1. `nginx:1.29-alpine`으로 이름 `site`, VM 포트 9090인 컨테이너를 백그라운드로 실행하고 `curl`로 확인하세요. (`site`는 실습 7의 확인 문제까지 계속 씁니다)
+1. `nginx:1.29-alpine`으로 이름 `site`, VM 포트 9090인 컨테이너를 백그라운드로 실행하고 `curl`로 확인하세요. (`site`는 실습 10의 확인 문제까지 계속 씁니다)
 
-## 실습 4. 컨테이너 켜고 끄고 지우기
+## 실습 7. 컨테이너 켜고 끄고 지우기
 
 **목표**: 컨테이너를 멈추고·다시 켜고·지우는 명령을 익히고, 자주 만나는 오류 3가지를 일부러 내서 고쳐 봅니다.
 
-실습 3의 `web`은 그대로 두고, 연습용 `web2`를 하나 더 띄워 상태를 바꿔 봅니다.
+실습 6의 `web`은 그대로 두고, 연습용 `web2`를 하나 더 띄워 상태를 바꿔 봅니다.
 
 ```bash
 docker run -d --name web2 -p 8081:80 nginx:1.29-alpine
@@ -160,7 +339,7 @@ docker logs -f web2         # 실시간 (Ctrl+C로 빠져나옴, 컨테이너는
 
 오류 문구를 한 번 봐 두면 나중에 만났을 때 바로 고칠 수 있습니다.
 
-**① 같은 이름으로 또 실행** — `web`은 실습 3에서 이미 만들었습니다.
+**① 같은 이름으로 또 실행** — `web`은 실습 6에서 이미 만들었습니다.
 
 ```bash
 docker run -d --name web -p 8082:80 nginx:1.29-alpine
@@ -213,12 +392,12 @@ docker ps -a                # web만 남음
 
 ### 확인 문제
 
-> `site`가 없으면(실습 3 확인 문제를 건너뛰었거나 지웠으면) 먼저 띄우세요: `docker run -d --name site -p 9090:80 nginx:1.29-alpine`
+> `site`가 없으면(실습 6 확인 문제를 건너뛰었거나 지웠으면) 먼저 띄우세요: `docker run -d --name site -p 9090:80 nginx:1.29-alpine`
 
 1. `site`를 멈추고 `docker ps`와 `docker ps -a`를 각각 실행해 `site`가 어디에 어떤 상태로 보이는지 확인한 뒤, 다시 시작하세요.
 2. `site`에 `curl`로 두 번 접속한 뒤, 로그의 마지막 2줄만 보세요.
 
-## 실습 5. 컨테이너 안 들여다보기
+## 실습 8. 컨테이너 안 들여다보기
 
 **목표**: 실행 중인 컨테이너 안에 들어가 보고, 파일을 넣고 빼고, 설정 정보와 환경변수를 확인합니다.
 
@@ -290,7 +469,7 @@ docker run --name fg nginx:1.29-alpine
 # ... signal 2 (SIGINT) received, exiting
 docker ps -a                                     # fg  Exited (0)
 ```
-`fg`는 지우지 말고 둡니다. 실습 6에서 정리합니다.
+`fg`는 지우지 말고 둡니다. 실습 9에서 정리합니다.
 
 | | `-d` 있음 | `-d` 없음 |
 |---|---|---|
@@ -301,17 +480,17 @@ docker ps -a                                     # fg  Exited (0)
 
 ### 확인 문제
 
-> `site`가 없으면(실습 3 확인 문제를 건너뛰었거나 지웠으면) 먼저 띄우세요: `docker run -d --name site -p 9090:80 nginx:1.29-alpine`
+> `site`가 없으면(실습 6 확인 문제를 건너뛰었거나 지웠으면) 먼저 띄우세요: `docker run -d --name site -p 9090:80 nginx:1.29-alpine`
 
 1. VM의 `~/drill` 폴더에 `note.html`(내용 `<p>note</p>`)을 만들어 `site`의 `/usr/share/nginx/html/`에 넣고 `curl localhost:9090/note.html`로 확인하세요. 그다음 `site` 안에 셸로 들어가 같은 폴더의 파일 목록에 `note.html`이 있는지 보고 나오세요.
 2. 환경변수 `MODE=dev`를 넣은 `nginx:1.29-alpine` 컨테이너를 끝나면 자동으로 지워지게 실행해 `echo $MODE`의 결과를 보고, 실행 뒤 `docker ps -a`에 남지 않았는지 확인하세요.
 
-## 실습 6. 이미지 다루기와 정리
+## 실습 9. 이미지 다루기와 정리
 
 **목표**: 이미지를 받고·이름표를 붙이고·지우는 법과, 멈춘 컨테이너를 정리하는 법을 익힙니다.
 
 ```bash
-docker pull redis:alpine                          # 08장에서 쓸 이미지 미리 받기
+docker pull redis:alpine                          # 09장에서 쓸 이미지 미리 받기
 docker image ls
 docker tag redis:alpine my-redis:v1               # 같은 이미지에 이름표 하나 더
 docker image ls --filter reference='*redis*'
@@ -349,7 +528,7 @@ Local Volumes   …         …         …         …
 Build Cache     …         …         …         …
 ```
 
-**멈춘 컨테이너 정리** — 실습 5의 `fg`가 `Exited`로 남아 있습니다.
+**멈춘 컨테이너 정리** — 실습 8의 `fg`가 `Exited`로 남아 있습니다.
 
 ```bash
 docker ps -a                 # fg  Exited (0)
@@ -371,7 +550,7 @@ Total reclaimed space: 77.82kB
 ### 확인 문제
 1. `nginx:1.29-alpine`에 `my-nginx:test` 이름표를 붙이고 두 이름의 IMAGE ID가 같은지 확인한 뒤, `my-nginx:test`만 지우세요. (`nginx:1.29-alpine`은 남아 있어야 합니다)
 
-## 실습 7. 컨테이너는 프로세스다 ⭐
+## 실습 10. 컨테이너는 프로세스다 ⭐
 
 **목표**: 컨테이너가 VM 위에서 도는 평범한 프로세스이고, 네임스페이스로 따로 떨어져 보일 뿐임을 명령으로 확인합니다.
 
@@ -403,11 +582,11 @@ docker exec web uname -r ; uname -r
 
 ### 확인 문제
 
-> `site`가 없으면(실습 3 확인 문제를 건너뛰었거나 지웠으면) 먼저 띄우세요: `docker run -d --name site -p 9090:80 nginx:1.29-alpine`
+> `site`가 없으면(실습 6 확인 문제를 건너뛰었거나 지웠으면) 먼저 띄우세요: `docker run -d --name site -p 9090:80 nginx:1.29-alpine`
 
 1. `site`의 PID를 `docker inspect`로 확인하고, VM의 `ps` 출력에서 같은 번호의 nginx 프로세스를 찾으세요. 컨테이너 안(`docker exec site ps`)에서는 이 nginx가 몇 번으로 보이나요? 다 풀었으면 `docker rm -f site`로 정리하세요.
 
-## 실습 8. 컨테이너 파일시스템은 사라진다
+## 실습 11. 컨테이너 파일시스템은 사라진다
 
 **목표**: 컨테이너 안에서 바꾼 파일은 컨테이너를 지우면 함께 사라진다는 것을 확인합니다.
 
@@ -421,15 +600,15 @@ docker rm -f web
 ```
 
 - 컨테이너 안에서 바꾼 내용은 그 컨테이너 전용 **쓰기 레이어**에 저장됩니다. 컨테이너를 지우면 쓰기 레이어도 같이 사라짐
-- 같은 이미지로 새로 만든 컨테이너는 이미지의 원래 상태에서 시작 → 남겨야 하는 데이터는 볼륨(실습 15)에 둡니다
-- 실습 3부터 쓰던 `web`은 여기서 지웠습니다
+- 같은 이미지로 새로 만든 컨테이너는 이미지의 원래 상태에서 시작 → 남겨야 하는 데이터는 볼륨(실습 18)에 둡니다
+- 실습 6부터 쓰던 `web`은 여기서 지웠습니다
 
 **끝났는지 확인**: 두 번째 `curl`이 다시 `Welcome to nginx!`를 보여 주고, `docker ps -a`에 `web`이 없으면 끝입니다.
 
 ### 확인 문제
 1. `nginx:1.29-alpine`으로 이름 `memo`, VM 포트 9092인 컨테이너를 띄워 `index.html`을 `<h1>memo</h1>`로 바꾼 뒤, 이번에는 지우지 말고 `docker restart memo`만 하세요. 바꾼 내용이 남아 있나요? 확인한 뒤 `memo`를 지우세요.
 
-## 실습 9. 이미지와 레이어
+## 실습 12. 이미지와 레이어
 
 **목표**: 이미지가 여러 레이어로 쌓여 있다는 것을 `history`로 확인합니다.
 
@@ -449,7 +628,7 @@ docker image history nginx:1.29-alpine
 ### 확인 문제
 1. `docker image history redis:alpine`에서 크기가 가장 큰 줄은 몇 MB이고 어떤 명령(CREATED BY의 앞부분)인가요? 맨 아래 줄은 무엇을 넣는 명령인가요?
 
-## 실습 10. 첫 Dockerfile 직접 쓰기
+## 실습 13. 첫 Dockerfile 직접 쓰기
 
 **목표**: Dockerfile을 직접 써서 내 이미지를 만들고, 내용을 바꿔 새 태그로 다시 빌드합니다.
 
@@ -529,7 +708,7 @@ myweb:v2   …                   92.6MB           26MB
 ### 확인 문제
 1. `~/myweb`에서 문구를 `my first image v3`로 바꿔 `myweb:v3`를 빌드하고, 이름 `myweb3`, VM 포트 9091로 실행해 바뀐 문구를 확인하세요. 확인한 뒤 `myweb3`를 지우세요.
 
-## 실습 11. 샘플앱 받고 Dockerfile 읽기
+## 실습 14. 샘플앱 받고 Dockerfile 읽기
 
 **목표**: 과정 내내 쓸 샘플앱(Online Boutique)을 받고, frontend의 Dockerfile을 한 줄씩 읽어 무엇을 하는지 이해합니다.
 
@@ -565,9 +744,9 @@ cat ob/src/frontend/Dockerfile
 
 ---
 
-> 실습 12부터는 미션 1 과제 1에서 만든 `my-frontend:v1`이 필요합니다. 없으면 `cd ~/ob/src/frontend && docker build -t my-frontend:v1 .`
+> 실습 15부터는 미션 1 과제 1에서 만든 `my-frontend:v1`이 필요합니다. 없으면 `cd ~/ob/src/frontend && docker build -t my-frontend:v1 .`
 
-## 실습 12. 싱글스테이지 vs 멀티스테이지
+## 실습 15. 싱글스테이지 vs 멀티스테이지
 
 **목표**: 같은 앱을 `FROM` 한 번(싱글스테이지)으로 빌드해, 멀티스테이지로 만든 `my-frontend:v1`과 크기를 비교합니다.
 
@@ -610,7 +789,7 @@ docker run --rm --entrypoint sh my-frontend:v1    # 실패 — distroless에는 
 ### 확인 문제
 1. `docker run --rm --entrypoint go 이미지 version`으로 `my-frontend:single`에는 Go 컴파일러가 남아 있고 `my-frontend:v1`에는 없음을 확인하세요. 확인한 뒤 디스크를 많이 차지하는 `my-frontend:single`을 지우세요.
 
-## 실습 13. 네트워크 — 이름으로 찾기
+## 실습 16. 네트워크 — 이름으로 찾기
 
 **목표**: 기본 네트워크와 직접 만든 네트워크를 비교해, 컨테이너끼리 이름으로 찾으려면 무엇이 필요한지 확인합니다.
 
@@ -643,7 +822,7 @@ Online Boutique의 서비스들은 서로를 `productcatalogservice:3550`처럼 
 1. 네트워크 `lab`을 만들고 `nginx:1.29-alpine` 컨테이너 `api`를 `lab`에 붙여 띄우세요. 그다음 `lab`에 붙인 일회용 컨테이너(`--rm`)에서 `wget -qO- api`를 실행해 nginx 첫 화면을 받아 보세요.
 2. `api`의 IP 주소만 한 줄로 출력해 기본 네트워크 대역(`172.17.`)과 다른지 확인한 뒤, `api`와 `lab` 네트워크를 지우세요.
 
-## 실습 14. 첫 Compose
+## 실습 17. 첫 Compose
 
 **목표**: nginx와 redis 두 컨테이너를 `compose.yaml` 파일 하나로 함께 띄우고 관리합니다.
 
@@ -684,17 +863,17 @@ docker compose logs web
 - `docker compose` 명령은 `compose.yaml`이 있는 폴더(`~/hello`)에서 실행합니다
 - `cat > compose.yaml <<'YAML'` … `YAML`은 두 `YAML` 줄 사이의 내용을 파일로 저장하는 셸 문법입니다. `vi compose.yaml`로 직접 써도 됩니다. YAML은 **들여쓰기(공백 2칸)**가 의미를 가지므로 탭 대신 공백을 씁니다
 
-**끝났는지 확인**: `docker compose ps`에 `web`·`cache` 두 서비스가 보이고, `curl localhost:8081`이 `hello compose`, `ping`이 `1 packets received`를 보여 주면 끝입니다. 이 Compose는 실습 15에서 그대로 이어 씁니다.
+**끝났는지 확인**: `docker compose ps`에 `web`·`cache` 두 서비스가 보이고, `curl localhost:8081`이 `hello compose`, `ping`이 `1 packets received`를 보여 주면 끝입니다. 이 Compose는 실습 18에서 그대로 이어 씁니다.
 
 ### 확인 문제
 1. `docker ps`와 `docker network ls`에서 Compose가 만든 컨테이너 이름과 네트워크 이름을 찾고, 이름이 어떤 규칙으로 붙었는지 적어 보세요.
 2. `cache` 서비스만 멈췄다가 다시 시작하세요. 멈춘 동안 `docker compose ps`에는 무엇이 보이나요? 다시 시작한 뒤 `redis-cli ping`으로 응답을 확인하세요.
 
-## 실습 15. 볼륨 두 종류
+## 실습 18. 볼륨 두 종류
 
 **목표**: 바인드 마운트와 이름 있는 볼륨의 차이를 보고, 컨테이너를 지워도 볼륨의 데이터가 남는지 확인합니다.
 
-실습 14의 `~/hello` 폴더에서, 띄워 둔 Compose를 그대로 이어서 씁니다(`cd ~/hello`).
+실습 17의 `~/hello` 폴더에서, 띄워 둔 Compose를 그대로 이어서 씁니다(`cd ~/hello`).
 
 **바인드 마운트** — VM의 폴더를 그대로 연결. 고치면 바로 반영됩니다.
 
@@ -722,7 +901,7 @@ docker compose down -v
 1. `docker compose up -d`로 다시 띄운 뒤 `html/about.html`(내용 `<p>about</p>`)을 새로 만들어, 재시작 없이 `curl localhost:8081/about.html`로 보이는지 확인하세요.
 2. `docker volume ls`에서 이 Compose가 만든 볼륨 이름을 찾으세요. 그다음 `docker compose down`과 `docker compose down -v`를 차례로 실행하며, 각각 실행한 뒤 볼륨이 남아 있는지 확인하세요.
 
-## 실습 16. 레지스트리에 push
+## 실습 19. 레지스트리에 push
 
 **목표**: VM 안에 연습용 레지스트리를 띄우고, 내 이미지를 레지스트리 주소가 붙은 이름으로 올린 뒤 목록으로 확인합니다.
 
@@ -743,6 +922,7 @@ curl localhost:5000/v2/_catalog        # {"repositories":["my-frontend"]}
 1. `nginx:1.29-alpine`에 `localhost:5000/web:v1` 이름표를 붙여 연습용 레지스트리에 올리고, `curl localhost:5000/v2/web/tags/list`로 태그 목록을 확인하세요. 이제 `_catalog`에는 무엇이 보이나요?
 
 ## 자주 쓴 명령
+- 기초: `hostname -I` `getent hosts` `ss -tln` `curl` (`-I`) `python3 -m http.server` · `|` `grep` `>` `>>` `export` `echo $?` · `nano` (Ctrl+O · Ctrl+X), vi 나가기 `:q!`
 - 컨테이너: `run` (`-d` `--name` `-p` `-e` `--rm`) `ps` (`-a`) `stop` `start` `restart` `logs` (`--tail` `-f`) `exec` (`-it`) `cp` `inspect` (`-f`) `rm` (`-f`) `container prune`
 - 이미지: `pull` `image ls` `image history` `tag` `rmi` `build` (`-t` `-f`) `system df`
 - 네트워크·Compose·레지스트리: `network create` `compose up/ps/logs/exec/down/config` `volume ls` `push`

@@ -6,17 +6,17 @@
 
 | 미션 | 언제 하나 |
 |---|---|
-| [미션 1. frontend 이미지 빌드](#미션-1-frontend-이미지-빌드) | 교안 05장(실습 11)까지 마친 뒤 |
-| [미션 2. Compose로 Online Boutique 조립](#미션-2-compose로-online-boutique-조립) | 교안 11장(실습 16)까지 마친 뒤 |
+| [미션 1. frontend 이미지 빌드](#미션-1-frontend-이미지-빌드) | 교안 06장(실습 14)까지 마친 뒤 |
+| [미션 2. Compose로 Online Boutique 조립](#미션-2-compose로-online-boutique-조립) | 교안 12장(실습 19)까지 마친 뒤 |
 
 ---
 
 ## 미션 1. frontend 이미지 빌드
 
-> 언제 하나: 05장(실습 11)까지 마친 뒤
+> 언제 하나: 06장(실습 14)까지 마친 뒤
 
 ### 준비
-[실습 11](./Docker-실습.md#실습-11-샘플앱-받고-dockerfile-읽기)에서 받은 `~/ob`가 있어야 합니다. 없으면:
+[실습 14](./Docker-실습.md#실습-14-샘플앱-받고-dockerfile-읽기)에서 받은 `~/ob`가 있어야 합니다. 없으면:
 ```bash
 cd ~ && git clone --depth 1 --branch v0.10.7 https://github.com/GoogleCloudPlatform/microservices-demo.git ob
 ```
@@ -143,7 +143,7 @@ builder 단계에서 `COPY . .`이 템플릿까지 복사합니다. 컴파일에
 
 ## 미션 2. Compose로 Online Boutique 조립
 
-> 언제 하나: 11장(실습 16)까지 마친 뒤
+> 언제 하나: 12장(실습 19)까지 마친 뒤
 
 ### 공통 정보
 모든 이미지 주소: `us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/<서비스>:v0.10.7` (redis만 `redis:alpine`)
@@ -167,7 +167,7 @@ frontend 주소 환경변수의 값 = `서비스이름:포트`. 지금 띄우지
 
 <details><summary>힌트 1</summary>
 
-실습 14의 `compose.yaml` 모양을 그대로 따라가세요. 서비스 이름(키)이 곧 다른 서비스가 부르는 주소입니다.
+실습 17의 `compose.yaml` 모양을 그대로 따라가세요. 서비스 이름(키)이 곧 다른 서비스가 부르는 주소입니다.
 </details>
 <details><summary>힌트 2</summary>
 
@@ -245,7 +245,7 @@ services:
 
 <details><summary>힌트 1</summary>
 
-실습 15의 "이름 있는 볼륨"입니다. redis는 `/data`에 저장합니다.
+실습 18의 "이름 있는 볼륨"입니다. redis는 `/data`에 저장합니다.
 </details>
 <details><summary>힌트 2</summary>
 
@@ -254,7 +254,7 @@ redis는 기본 설정으로는 종료할 때만 저장합니다. 명령을 `red
 
 ### 과제 5. 레지스트리의 이미지로 실행
 
-실습 16에서 띄운 연습용 레지스트리(`localhost:5000`)에 `my-frontend:v2`를 올리고, **Compose가 레지스트리의 이미지를 쓰도록** 바꾸세요. 로컬 이미지를 지워도 동작하는지 확인합니다.
+실습 19에서 띄운 연습용 레지스트리(`localhost:5000`)에 `my-frontend:v2`를 올리고, **Compose가 레지스트리의 이미지를 쓰도록** 바꾸세요. 로컬 이미지를 지워도 동작하는지 확인합니다.
 
 <details><summary>힌트</summary>
 
