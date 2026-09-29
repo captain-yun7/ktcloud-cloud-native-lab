@@ -41,6 +41,8 @@ kyverno: kyverno-images  ## 정책 엔진 Kyverno 설치 — 보안 과목. 이�
 	@kind load image-archive /tmp/kyverno-images.tar --name $(CLUSTER) && rm -f /tmp/kyverno-images.tar
 	@helm upgrade --install kyverno kyverno --repo https://kyverno.github.io/kyverno/ --version $(KYVERNO_CHART) \
 	  -n kyverno --create-namespace --wait --timeout 5m >/dev/null
+	@# 파드가 Ready여도 웹훅이 몇 초 늦게 열려 첫 정책 apply가 connection refused로 실패할 수 있다 → 받을 준비가 될 때까지 기다린다 (2026-09-28)
+	@for i in $$(seq 1 60); do kubectl apply --dry-run=server -f security/kyverno-ready-check.yaml >/dev/null 2>&1 && break; sleep 2; done
 	@kubectl -n kyverno get pods
 
 monitoring:       ## kube-prometheus-stack (모니터링 과목) — grafana.localhost(admin/lab-grafana), prometheus.localhost, alertmanager.localhost

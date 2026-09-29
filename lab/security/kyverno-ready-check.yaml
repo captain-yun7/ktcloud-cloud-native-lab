@@ -1,0 +1,15 @@
+# make kyverno가 설치 직후 Kyverno가 정책을 받을 준비가 됐는지 확인할 때 쓴다 (--dry-run=server, 실제로 만들지 않음)
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: kyverno-ready-check
+spec:
+  validationActions: [Audit]
+  matchConstraints:
+    resourceRules:
+    - apiGroups: [""]
+      apiVersions: [v1]
+      operations: [CREATE]
+      resources: [configmaps]
+  validations:
+  - expression: "true"
