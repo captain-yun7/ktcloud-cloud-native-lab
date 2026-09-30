@@ -1,5 +1,5 @@
 # kind 노드(containerd)가 docker.io 이미지를 받을 때 구글 복사본 mirror.gcr.io를 먼저 쓴다.
-# Docker Hub 익명 받기 한도(외부 IP당 시간당 100회)를 VM 30대가 공유하기 때문 (2026-09-26)
+# Docker Hub 익명 받기 한도(외부 IP당 시간당 100회)를 VM 여러 대가 공유하기 때문 (2026-09-26)
 server = "https://registry-1.docker.io"
 
 [host."https://mirror.gcr.io"]
