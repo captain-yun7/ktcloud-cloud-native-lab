@@ -1,0 +1,41 @@
+# todo 앱의 DB(PostgreSQL) — Deployment + Service. Kubernetes 실습 7에서 그대로 apply 합니다
+# 비밀번호는 Secret todo-secret의 DB_PASSWORD에서 읽습니다 (실습 7에서 먼저 만듦)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:17-alpine
+        env:
+        - name: POSTGRES_USER
+          value: todo
+        - name: POSTGRES_DB
+          value: todo
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: todo-secret
+              key: DB_PASSWORD
+        ports:
+        - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector:
+    app: db
+  ports:
+  - port: 5432

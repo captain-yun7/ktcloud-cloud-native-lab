@@ -1,0 +1,31 @@
+# todo 앱의 화면(nginx) — Deployment + Service. Kubernetes 실습 7에서 그대로 apply 합니다
+# nginx가 /api/ 요청을 api:3000으로 넘기므로 api Service를 먼저 만들어야 합니다 (lab/docker/todo/web/default.conf)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: todo-web:v1
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+  - port: 80

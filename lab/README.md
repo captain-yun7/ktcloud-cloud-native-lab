@@ -16,5 +16,6 @@ make up PROFILE=full # Service Mesh 과목부터: 노드 3개 (로컬은 메모�
 make status
 make down            # 끝나면 삭제 (자원 반환)
 ```
+- 실습 앱: `docker/`(Docker 과목 Node 앱), `k8s/`(Kubernetes 과목 YAML)
 - Ingress(Kubernetes 과목 Ingress 실습부터): `make ingress`로 Traefik 설치 → `http://<이름>.localhost`로 열린다 (ingress-nginx는 2026-03 지원 종료)
 - 망가지면 `make reset` — 몇 분이면 새 클러스터
