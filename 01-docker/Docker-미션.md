@@ -3,7 +3,7 @@
 미션은 실습에서 배운 것을 **스스로 조합해** 푸는 과제입니다. 실습처럼 명령을 다 적어 두지 않았습니다. 대신 막히면 펼쳐 볼 수 있는 힌트가 단계별로 있습니다.
 
 - 스스로 풉니다. 막히면 **힌트를 1단계부터 하나씩** 펼쳐 보고(▶ 힌트 글자를 누르면 펼쳐짐), 그래도 막히면 Discord에 질문합니다.
-- 리뷰 전까지 미션별 **제출 표**를 채워 제출합니다. 제출 방법은 수업에서 안내합니다.
+- 미션마다 끝에 **결과 정리 표**가 있습니다. 리뷰 때 함께 보니 채워 두세요.
 - 문서에 적힌 시간 수치는 강사 VM에서 단독으로 측정한 값이라 여러분의 결과와 조금 다를 수 있습니다.
 
 | 미션 | 언제 하나 |
@@ -160,7 +160,7 @@ v1 이미지는 `/about`을 넣기 전의 `app.js`로 만들어졌습니다. 없
 `-e`로 환경변수를 넣고, `-p`의 오른쪽(컨테이너 포트)도 같이 바꿔야 합니다. `docker logs my-app3`에 나오는 포트 번호를 확인하세요.
 </details>
 
-### 미션 1 제출 표
+### 미션 1 결과 정리 표
 
 | 항목 | 내 결과 |
 |---|---|
@@ -171,7 +171,7 @@ v1 이미지는 `/about`을 넣기 전의 `app.js`로 만들어졌습니다. 없
 | (도전) 실행 명령과 `docker logs my-app3` 결과 | |
 
 ### 미션 1 정리
-제출 표를 채운 뒤 컨테이너는 지워도 됩니다: `docker rm -f my-app1 my-app2 my-app3`. 미션 2와 포트가 겹치지 않으므로 두어도 됩니다.
+결과 정리 표를 채운 뒤 컨테이너는 지워도 됩니다: `docker rm -f my-app1 my-app2 my-app3`. 미션 2와 포트가 겹치지 않으므로 두어도 됩니다.
 
 ---
 
@@ -410,7 +410,7 @@ curl -s -o /dev/null -w "%{http_code}\n" localhost:8080      # 200
 1. VS Code 아래 패널에서 **PORTS** 탭 → **Forward a Port** → `8080` 입력 → Enter
 2. 생긴 줄의 주소(지구 아이콘)를 눌러 `http://localhost:8080`을 엽니다
 
-**이렇게 나오면 성공**: 맨 위에 "Online Boutique" 로고, 아래에 상품 사진 9개(Sunglasses, Tank Top, Watch, Loafers, Hairdryer, Candle Holder, Salt & Pepper Shakers, Bamboo Glass Jar, Mug). 이 화면을 캡처해 제출 표에 붙입니다.
+**이렇게 나오면 성공**: 맨 위에 "Online Boutique" 로고, 아래에 상품 사진 9개(Sunglasses, Tank Top, Watch, Loafers, Hairdryer, Candle Holder, Salt & Pepper Shakers, Bamboo Glass Jar, Mug). 이 화면을 캡처해 두면 리뷰 때 함께 봅니다.
 
 **이렇게 나오면?**
 
@@ -506,7 +506,7 @@ curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/cart     # 200
 
 브라우저에서 장바구니를 다시 열면 담은 상품과 배송비(Shipping)가 보입니다.
 
-#### 5단계. 생각해 보기 (제출 표에 적기)
+#### 5단계. 생각해 보기 (결과 정리 표에 적기)
 
 2단계 로그에 `failed to get ads`(광고를 못 가져옴)도 있었습니다. adservice도 없다는 뜻인데, **그런데도 홈 화면은 왜 정상으로 떴을까요?** 상품 화면 아래쪽 광고 자리가 지금 어떻게 보이는지 확인하고 한 줄로 적어 보세요.
 
@@ -580,7 +580,7 @@ cat ~/ob/kubernetes-manifests/checkoutservice.yaml
 - checkoutservice는 다른 서비스를 많이 부르므로(장바구니·상품·배송·환율·결제·메일) 주소 환경변수가 여러 개입니다
 </details>
 
-### 미션 2 제출 표
+### 미션 2 결과 정리 표
 
 | 항목 | 내 결과 |
 |---|---|
@@ -592,4 +592,4 @@ cat ~/ob/kubernetes-manifests/checkoutservice.yaml
 - `docker stats --no-stream` = 컨테이너마다 쓰는 CPU·메모리를 한 번 보여 줌. `MEM USAGE` 열이 가장 큰 것이 가장 무거운 서비스
 
 ### 미션 2 정리
-제출 표를 채운 뒤 `~/shop`에서 `docker compose down`으로 내립니다. 도전 A로 볼륨을 만들었다면 `docker compose down -v`.
+결과 정리 표를 채운 뒤 `~/shop`에서 `docker compose down`으로 내립니다. 도전 A로 볼륨을 만들었다면 `docker compose down -v`.

@@ -7,7 +7,7 @@
 ```bash
 git clone <이 저장소> && cd lab
 make tools        # 고정 버전 도구 설치 (kubectl, kind, helm, kustomize, k9s) — k8s 템플릿 VM은 이미 설치돼 있음
-make doctor       # 환경 점검 → doctor-report.txt 제출
+make doctor       # 환경 점검 → doctor-report.txt
 ```
 ## 매일
 ```bash
