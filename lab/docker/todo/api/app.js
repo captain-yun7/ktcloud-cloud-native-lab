@@ -6,7 +6,11 @@ const pool = new Pool({
   user: process.env.DB_USER || 'todo',
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME || 'todo',
+  connectionTimeoutMillis: 3000, // DB에 못 붙으면 3초 뒤 오류 — 무한히 기다리지 않게
 });
+
+// DB가 재시작되면 쉬고 있던 연결이 끊긴다. 로그만 남기고 계속 돈다(다음 요청 때 새로 연결)
+pool.on('error', (err) => console.log(`database connection lost: ${err.message}`));
 
 const app = express();
 app.use(express.json());
