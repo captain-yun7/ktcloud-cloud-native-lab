@@ -95,7 +95,7 @@ metrics-server-84c99cb944-vj9j8             1/1     Running   0          34s
 kubectl describe node lab-control-plane | head -20
 ```
 
-**이 명령은**: `kubectl describe <종류> <이름>` = 하나를 자세히. `| head -20` = 앞 20줄만(실습 2 파이프). 파드에 쓰면 맨 아래 **Events**(일어난 일 기록)가 나와, 문제를 찾을 때 가장 많이 씁니다(실습 3부터).
+**이 명령은**: `kubectl describe <종류> <이름>` = 하나를 자세히. `| head -20` = 앞 20줄만(Docker 실습 2의 파이프). 파드에 쓰면 맨 아래 **Events**(일어난 일 기록)가 나와, 문제를 찾을 때 가장 많이 씁니다(실습 3부터).
 
 **이렇게 나오면 성공**: `Name: lab-control-plane`, `Roles: control-plane`, `Labels:` 아래 `kubernetes.io/hostname=lab-control-plane` 등.
 
