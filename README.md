@@ -30,6 +30,7 @@
 | 과목 | 실습 | 미션 |
 |---|---|---|
 | Docker | [Docker-실습](./01-docker/Docker-실습.md) | [Docker-미션](./01-docker/Docker-미션.md) |
+| Kubernetes | [Kubernetes-실습](./02-kubernetes/Kubernetes-실습.md) | [Kubernetes-미션](./02-kubernetes/Kubernetes-미션.md) |
 
 `lab/` 폴더에는 실습에 쓰는 설정 파일과 스크립트(`make tools`, `make up` 등)가 있습니다. 쿠버네티스 과목부터 씁니다.
 
