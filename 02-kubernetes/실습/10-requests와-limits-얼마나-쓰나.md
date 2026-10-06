@@ -6,7 +6,7 @@
 
 **필요한 것**: 실습 9의 `probe.yaml`(hello).
 
-> **바로 가기** · [1. requests·limits 넣기](#1단계-requestslimits-넣기) · [2. 일부러 실패하는 파드 두 개](#2단계-일부러-실패하는-파드-두-개) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. requests·limits 넣기](#1단계-requestslimits-넣기) · [2. 일부러 실패하는 파드 두 개](#2단계-일부러-실패하는-파드-두-개) · [3. 자동으로 늘리기 — HPA](#3단계-자동으로-늘리기--hpa) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. requests·limits 넣기
 
@@ -175,13 +175,86 @@ kubectl delete -f res-test.yaml
 
 </details>
 
+## 3단계. 자동으로 늘리기 — HPA
+
+지금까지 파드 개수는 사람이 파일의 `replicas`를 고쳐 바꿨습니다. **HPA**(HorizontalPodAutoscaler)는 파드의 CPU 사용량을 보고 이 숫자를 대신 바꿔 줍니다. 1단계에서 넣은 `requests`가 기준이 됩니다.
+
+```bash
+kubectl autoscale deployment hello --cpu=50% --min=3 --max=6
+kubectl get hpa
+```
+
+**이 명령은**: Deployment `hello`의 파드 평균 CPU가 requests(50m)의 **50%** 를 넘으면 늘리고, 개수는 **최소 3, 최대 6**으로.
+
+**이렇게 나오면 성공**: `horizontalpodautoscaler.autoscaling/hello autoscaled`, 그리고
+
+```
+NAME    REFERENCE          TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+hello   Deployment/hello   cpu: 4%/50%   3         6         3          30s
+```
+
+- `TARGETS cpu: 4%/50%` = 지금 4%, 목표 50%. 처음 몇 초는 `cpu: <unknown>/50%`(아직 못 잼) — 30초쯤 뒤 다시
+
+이제 hello를 쉬지 않고 부르는 파드 `load`를 띄워 CPU를 올립니다.
+
+```bash
+kubectl run load --image=busybox:1.37 -- sh -c "while true; do wget -qO- hello > /dev/null; done"
+kubectl get hpa hello -w
+```
+
+`-w`(watch)는 바뀔 때마다 한 줄씩 더 보여 줍니다. 1분쯤 지켜본 뒤 **Ctrl+C**로 멈춥니다.
+
+**이렇게 나오면 성공**: 30~40초 뒤 `TARGETS`가 50%를 넘고 `REPLICAS`가 늘어납니다.
+
+```
+hello   Deployment/hello   cpu: 4%/50%     3   6   3   1m
+hello   Deployment/hello   cpu: 94%/50%    3   6   3   1m30s
+hello   Deployment/hello   cpu: 218%/50%   3   6   6   1m40s
+```
+
+```bash
+kubectl get pods -l app=hello
+kubectl describe hpa hello | tail -3
+```
+
+- 파드가 6개(새 3개는 `AGE`가 짧음). describe 맨 아래에 `New size: 6; reason: cpu resource utilization (percentage of request) above target`
+- `--max=6`이라 6개에서 멈춥니다. 노드 자원이 허락하는 한에서만 늘어납니다
+
+부하를 멈추고 HPA를 지웁니다.
+
+```bash
+kubectl delete pod load
+kubectl delete hpa hello
+kubectl apply -f res.yaml
+kubectl get deployment hello
+```
+
+**이렇게 나오면 성공**: `load` 지우기는 30초쯤 걸리고, 마지막에 `hello   3/3` — 파일의 `replicas: 3`으로 돌아왔습니다.
+
+- HPA를 그대로 두면 부하가 끝난 뒤 **5분쯤 기다렸다가** 3개로 줄입니다(개수가 자주 오르내리지 않게). 수업에서는 기다리지 않고 지웁니다
+- HPA를 둔 채 `kubectl apply -f res.yaml`을 하면 파일의 `replicas: 3`과 HPA가 서로 숫자를 바꿉니다. HPA를 쓸 때는 보통 파일에서 `replicas`를 빼 둡니다
+
+<details><summary><b>이렇게 나오면?</b> — 자주 나는 오류와 해결 (눌러서 펼치기)</summary>
+
+| 화면 | 원인 | 해결 |
+|---|---|---|
+| `TARGETS`가 계속 `cpu: <unknown>/50%` | 사용량을 아직 못 잼, 또는 파드에 requests가 없음 | 30초 뒤 다시. 계속이면 1단계 `res.yaml`이 적용됐는지(`kubectl describe hpa hello`의 Events에 `missing request for cpu`) |
+| `Flag --cpu-percent has been deprecated` 경고 | 옛 옵션을 씀 | 그대로 동작함. 새 모양은 `--cpu=50%` |
+| `Error from server (AlreadyExists): … "hello" already exists` | HPA를 이미 만듦 | 그대로 진행, 또는 `kubectl delete hpa hello` 후 다시 |
+| `Error from server (AlreadyExists): pods "load" already exists` | `load`를 이미 띄움 | `kubectl get pods load`로 확인 |
+| 2분이 지나도 `REPLICAS 3` | `load`가 `Running`이 아님, 또는 Service `hello`가 없음(실습 6) | `kubectl logs load`, `kubectl get service hello` |
+
+</details>
+
 ## 끝났는지 확인
 - ☐ `kubectl top pods`로 hello의 실제 메모리를 봤다
 - ☐ `big`이 `Pending`이고 Events에 `Insufficient cpu`
 - ☐ `tiny`가 `OOMKilled`이고 `Last State`의 `Reason: OOMKilled`
+- ☐ `load`를 띄운 뒤 `kubectl get hpa`의 `REPLICAS`가 3보다 커졌다
 
 ## 정리
 - `big`·`tiny`는 2단계 끝에서 지웠습니다. hello는 이제 `res.yaml`의 것입니다(실습 11에서 씀)
+- `load` 파드와 HPA는 3단계 끝에서 지웠습니다. `kubectl get hpa` → `No resources found`, `kubectl get deployment hello` → `3/3`
 
 ## 확인 문제
 1. `res-test.yaml`에서 `big`의 `cpu: "8"`을 `cpu: "1"`로 고쳐 `kubectl apply -f res-test.yaml` 하세요. 무슨 오류가 나오나요? 어떻게 하면 `big`이 `Running`이 되나요? 확인한 뒤 `kubectl delete -f res-test.yaml`.

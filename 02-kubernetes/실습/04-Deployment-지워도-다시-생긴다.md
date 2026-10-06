@@ -2,11 +2,11 @@
 
 # 실습 4. Deployment — 지워도 다시 생긴다
 
-**무엇을 하나요**: "hello 파드 3개를 유지해 줘"라고 **Deployment**에 적습니다. 파드를 지워도 다시 생기고, 숫자만 바꾸면 늘었다 줄었다 하는 것을 봅니다. 앞으로는 파드를 직접 만들지 않고 Deployment로 만듭니다. (교안 04장)
+**무엇을 하나요**: "hello 파드 3개를 유지해 줘"라고 **Deployment**에 적습니다. 파드를 지워도 다시 생기고, 숫자만 바꾸면 늘었다 줄었다 하는 것을 봅니다. 앞으로는 파드를 직접 만들지 않고 Deployment로 만듭니다. 마지막으로 Deployment 말고 다른 종류(DaemonSet·Job)를 짧게 봅니다. (교안 04장)
 
 **필요한 것**: 실습 3에서 `kind load`로 넣은 `hello:v1`.
 
-> **바로 가기** · [1. Deployment YAML 쓰기](#1단계-deployment-yaml-쓰기) · [2. 적용하고 보기](#2단계-적용하고-보기) · [3. 파드 하나를 지우면](#3단계-파드-하나를-지우면) · [4. 파일의 숫자를 바꾸면](#4단계-파일의-숫자를-바꾸면) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. Deployment YAML 쓰기](#1단계-deployment-yaml-쓰기) · [2. 적용하고 보기](#2단계-적용하고-보기) · [3. 파드 하나를 지우면](#3단계-파드-하나를-지우면) · [4. 파일의 숫자를 바꾸면](#4단계-파일의-숫자를-바꾸면) · [5. Deployment 말고 다른 종류](#5단계-deployment-말고-다른-종류) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. Deployment YAML 쓰기
 
@@ -158,14 +158,84 @@ hello-d6646dd5c-zqrhr   1/1     Running       0          52s
 
 </details>
 
+## 5단계. Deployment 말고 다른 종류
+
+파드를 관리하는 오브젝트는 Deployment 말고도 있습니다(교안 04장 "Deployment 말고 다른 종류"). 그중 둘을 짧게 봅니다.
+
+**DaemonSet — 노드마다 하나씩.** 클러스터에 이미 있습니다.
+
+```bash
+kubectl get daemonset -n kube-system
+```
+
+**이렇게 나오면 성공**
+
+```
+NAME         DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
+kindnet      1         1         1       1            1           kubernetes.io/os=linux   2m26s
+kube-proxy   1         1         1       1            1           kubernetes.io/os=linux   2m27s
+```
+
+- `DESIRED 1` = 노드가 1개라 1개. 노드가 10개인 클러스터라면 10개가 됩니다. replicas를 적지 않고 **노드 수만큼** 둡니다
+
+**Job — 한 번 실행하고 끝.** 이번에는 YAML을 처음부터 쓰지 않고, `kubectl`에게 뼈대를 받아 파일로 저장합니다.
+
+```bash
+kubectl create job once --image=busybox:1.37 --dry-run=client -o yaml -- echo "Job이 한 번 실행됨" > job.yaml
+cat job.yaml
+```
+
+**이 명령은**
+- `kubectl create job once --image=… -- 명령` = 이 이미지로 이 명령을 한 번 실행하는 Job `once`
+- `--dry-run=client` = **실제로 만들지 않음**, `-o yaml` = 만들 내용을 YAML로 출력. `> job.yaml` = 화면 대신 파일에 저장
+- Deployment도 `kubectl create deployment hello --image=hello:v1 --replicas=3 --dry-run=client -o yaml`처럼 뼈대를 받을 수 있습니다. 1단계에서 직접 쓴 `deploy.yaml`과 비교해 보세요
+
+**이렇게 나오면 성공**: `cat`에 `kind: Job`, `image: busybox:1.37`, `restartPolicy: Never`가 든 YAML. 아직 클러스터에는 아무것도 없습니다(`kubectl get jobs` → `No resources found`).
+
+```bash
+kubectl apply -f job.yaml
+kubectl get jobs
+kubectl get pods
+kubectl logs job/once
+```
+
+몇 초 뒤 `kubectl get jobs`를 한 번 더 칩니다.
+
+**이렇게 나오면 성공**
+
+```
+NAME   STATUS     COMPLETIONS   DURATION   AGE
+once   Complete   1/1           3s         6s
+```
+```
+NAME                    READY   STATUS      RESTARTS   AGE
+hello-d6646dd5c-44cnj   1/1     Running     0          7s
+…
+once-gtld2              0/1     Completed   0          6s
+```
+```
+Job이 한 번 실행됨
+```
+
+- `COMPLETIONS 1/1` = 한 번 성공하고 끝남. 파드는 `Completed`로 남고 **다시 만들지 않습니다**. Deployment라면 꺼진 파드를 다시 만들었을 것입니다
+- 정해진 시간마다 Job을 만드는 것은 CronJob입니다(`kubectl create cronjob …`). 백업 같은 일에 씁니다
+
+다 봤으면 Job을 지웁니다. 파드 `once-…`도 함께 지워집니다.
+
+```bash
+kubectl delete job once
+```
+
 ## 끝났는지 확인
 - ☐ `kubectl get deployment`에 `hello   3/3`
 - ☐ 파드를 지웠을 때 새 이름의 파드가 생겨 다시 3개가 됐다
 - ☐ `replicas`를 5로 바꾸면 5개, 3으로 되돌리면 3개가 됐다
+- ☐ `kubectl get jobs`에 `once   Complete   1/1`, `kubectl logs job/once`에 `Job이 한 번 실행됨`
 
 ## 정리
 - Deployment `hello`(파드 3개)는 **실습 5·6에서 계속 씁니다**. 지우지 마세요
 - `deploy.yaml`은 `replicas: 3`인지 확인해 둡니다
+- Job `once`는 5단계 끝에서 지웠습니다(`kubectl get jobs` → `No resources found`)
 
 ## 확인 문제
 1. `kubectl delete pod -l app=hello`로 이름표 `app=hello`가 붙은 파드를 한꺼번에 지워 보세요. 다시 생긴 파드들의 이름에서 바뀐 부분과 그대로인 부분은 어디인가요? `kubectl get replicaset`의 이름과 비교하세요.

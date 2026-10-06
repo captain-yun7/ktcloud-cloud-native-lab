@@ -6,7 +6,7 @@
 
 **필요한 것**: 저장소의 `lab/docker/todo`(Docker 실습 13의 앱)와 `lab/k8s/todo`(이 과목에서 받은 YAML 두 개). 터미널 두 개.
 
-> **바로 가기** · [1. 이미지 만들고 클러스터에 넣기](#1단계-이미지-만들고-클러스터에-넣기) · [2. 받은 파일 보기 — Compose와 비교](#2단계-받은-파일-보기--compose와-비교) · [3. 설정 — ConfigMap](#3단계-설정--configmap) · [4. 비밀번호 — Secret](#4단계-비밀번호--secret) · [5. db 띄우기](#5단계-db-띄우기) · [6. api 쓰기](#6단계-api-쓰기) · [7. web 띄우기](#7단계-web-띄우기) · [8. 화면과 API 확인 — port-forward](#8단계-화면과-api-확인--port-forward) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. 이미지 만들고 클러스터에 넣기](#1단계-이미지-만들고-클러스터에-넣기) · [2. 받은 파일 보기 — Compose와 비교](#2단계-받은-파일-보기--compose와-비교) · [3. 설정 — ConfigMap](#3단계-설정--configmap) · [4. 비밀번호 — Secret](#4단계-비밀번호--secret) · [5. db 띄우기](#5단계-db-띄우기) · [6. api 쓰기](#6단계-api-쓰기) · [7. web 띄우기](#7단계-web-띄우기) · [8. 화면과 API 확인 — port-forward](#8단계-화면과-api-확인--port-forward) · [9. ConfigMap을 파일로 넣어 보기](#9단계-configmap을-파일로-넣어-보기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. 이미지 만들고 클러스터에 넣기
 
@@ -289,14 +289,68 @@ curl localhost:8088/api/todos
 
 </details>
 
+## 9단계. ConfigMap을 파일로 넣어 보기
+
+3단계의 ConfigMap은 **환경변수**로 넣었습니다. ConfigMap은 **파일**로도 넣을 수 있습니다. nginx 설정 파일처럼 파일 통째로 넣어야 하는 설정에 씁니다. 작은 파드 `cm-file`에 `todo-config`를 폴더로 붙여 봅니다.
+
+```bash
+nano cm-file.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-file
+spec:
+  containers:
+  - name: cm-file
+    image: busybox:1.37
+    command: ["sleep", "infinity"]
+    volumeMounts:
+    - name: config
+      mountPath: /config
+  volumes:
+  - name: config
+    configMap:
+      name: todo-config
+```
+
+| 줄 | 뜻 |
+|---|---|
+| `volumes:` 아래 `configMap: name: todo-config` | ConfigMap `todo-config`를 저장 공간처럼 씀 |
+| `volumeMounts:` `mountPath: /config` | 그것을 컨테이너의 `/config` 폴더에 붙임(Docker `-v`와 같은 모양) |
+
+```bash
+kubectl apply -f cm-file.yaml
+kubectl exec cm-file -- ls /config
+kubectl exec cm-file -- cat /config/DB_HOST
+```
+
+**이렇게 나오면 성공**
+
+```
+DB_HOST
+DB_NAME
+DB_USER
+db
+```
+
+- **키마다 파일이 하나씩** 생기고, 파일 내용이 값입니다(`/config/DB_HOST` = `db`)
+- 환경변수와 다른 점: ConfigMap을 바꾸면 **실행 중인 파드의 파일도 1~2분 뒤 바뀝니다**(다시 시작하지 않아도). 확인 문제 1에서 같이 봅니다. 다만 앱이 바뀐 파일을 다시 읽는지는 앱에 따라 다릅니다
+
+`cm-file`은 확인 문제 1에서 쓰고, 그 뒤 지웁니다(정리).
+
 ## 끝났는지 확인
 - ☐ `kubectl get pods`에 `api`·`db`·`web`이 `1/1 Running`
 - ☐ `kubectl logs deploy/api`에 `connected to database at db`
 - ☐ port-forward 중 `curl localhost:8088/api/todos`로 넣은 할 일이 보였다
+- ☐ `kubectl exec cm-file -- cat /config/DB_HOST`에 `db`
 
 ## 정리
 - todo(api·db·web), ConfigMap·Secret은 **실습 8·11에서 계속 씁니다**. 지우지 마세요
+- `cm-file`은 확인 문제 1 뒤 지웁니다: `kubectl delete pod cm-file`(30초쯤)
 
 ## 확인 문제
-1. `todo-config.yaml`의 `DB_HOST: db`를 `DB_HOST: dbx`로 고쳐 `kubectl apply -f todo-config.yaml` 하세요. `kubectl exec deploy/api -- env | grep DB_HOST`의 값은 바로 바뀌나요? `kubectl rollout restart deployment/api` 뒤 api 로그는 어떻게 되나요? 확인한 뒤 `db`로 되돌리고 다시 `rollout restart` 합니다.
+1. `todo-config.yaml`의 `DB_HOST: db`를 `DB_HOST: dbx`로 고쳐 `kubectl apply -f todo-config.yaml` 하세요. `kubectl exec deploy/api -- env | grep DB_HOST`의 값은 바로 바뀌나요? `kubectl rollout restart deployment/api` 뒤 api 로그는 어떻게 되나요? 그 사이 9단계의 `cm-file`에서 `kubectl exec cm-file -- cat /config/DB_HOST`를 1분쯤 간격으로 쳐 보세요. 이쪽은 언제 바뀌나요? 확인한 뒤 `db`로 되돌리고 다시 `rollout restart` 합니다.
 2. 6단계에서 본 `DB_SERVICE_HOST=10.96.…`의 IP는 무엇의 IP인가요? `kubectl get service`에서 찾아보세요.

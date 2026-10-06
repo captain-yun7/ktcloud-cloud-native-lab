@@ -6,7 +6,7 @@
 
 **필요한 것**: 실습 5의 Deployment `hello`(v1, 파드 3개). 터미널 두 개([시작하기 전에 8](./00-시작하기-전에.md#8-터미널-두-개와-브라우저-ports-탭)).
 
-> **바로 가기** · [1. 파드 IP는 바뀐다](#1단계-파드-ip는-바뀐다) · [2. Service YAML 쓰기](#2단계-service-yaml-쓰기) · [3. 적용하고 보기](#3단계-적용하고-보기) · [4. 다른 파드에서 이름으로 부르기](#4단계-다른-파드에서-이름으로-부르기) · [5. 파드를 다 바꿔도 이름은 그대로](#5단계-파드를-다-바꿔도-이름은-그대로) · [6. VM에서 보기 — port-forward](#6단계-vm에서-보기--port-forward) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. 파드 IP는 바뀐다](#1단계-파드-ip는-바뀐다) · [2. Service YAML 쓰기](#2단계-service-yaml-쓰기) · [3. 적용하고 보기](#3단계-적용하고-보기) · [4. 다른 파드에서 이름으로 부르기](#4단계-다른-파드에서-이름으로-부르기) · [5. 파드를 다 바꿔도 이름은 그대로](#5단계-파드를-다-바꿔도-이름은-그대로) · [6. VM에서 보기 — port-forward](#6단계-vm에서-보기--port-forward) · [7. Service 종류 — NodePort로 밖에서 들어오기](#7단계-service-종류--nodeport로-밖에서-들어오기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. 파드 IP는 바뀐다
 
@@ -148,18 +148,108 @@ curl localhost:8000
 | `Unable to listen on port 8000: … address already in use` | VM의 8000을 다른 것이 씀(Docker 과목의 컨테이너 등) | `docker ps`로 8000을 쓰는 컨테이너를 지우거나, `8001:80`처럼 다른 번호 |
 | `Error from server (NotFound): services "helo" not found` | port-forward의 Service 이름 오타 | `kubectl get service`로 확인 |
 | `curl: (7) Failed to connect to localhost port 8000` | 터미널 1의 port-forward가 꺼짐 | 터미널 1에서 다시 실행 |
+| `… nodePort: Invalid value: …: provided port is not in the valid range` | `nodePort`가 30000~32767 밖 | `nodePort: 30080` |
+| `… provided port is already allocated` | 30080을 다른 Service가 이미 씀(`hello-ext`를 두 번 만듦 등) | `kubectl get service`로 `80:30080`인 Service 확인 |
+| `curl localhost:8080`이 `Recv failure: Connection reset by peer` | `hello-ext`가 없거나 `type`·`nodePort` 줄이 빠짐 | `kubectl get service hello-ext`의 `PORT(S)`가 `80:30080/TCP`인지 |
 
 </details>
+
+## 7단계. Service 종류 — NodePort로 밖에서 들어오기
+
+지금까지 만든 Service `hello`는 종류(`type`)를 적지 않았습니다. 그러면 기본값 **ClusterIP** — 클러스터 **안에서만** 부를 수 있는 Service가 됩니다. 3단계 화면의 `TYPE` 열이 `ClusterIP`였던 이유입니다. 이번에는 클러스터 밖(VM)에서 port-forward 없이 들어오는 **NodePort** Service를 하나 더 만듭니다.
+
+| 종류 (`type`) | 어디서 들어오나 |
+|---|---|
+| `ClusterIP` (기본값) | 클러스터 안에서만. 지금까지의 `hello` |
+| `NodePort` | 노드의 포트(30000~32767 중 하나)로 클러스터 밖에서 |
+| `LoadBalancer` | 클라우드가 주는 외부 IP로. kind에는 없음 |
+
+```bash
+cp service.yaml svc-ext.yaml
+nano svc-ext.yaml
+```
+
+`name`을 `hello-ext`로 바꾸고, `type: NodePort`와 `nodePort: 30080` 두 줄을 더합니다.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-ext
+spec:
+  type: NodePort
+  selector:
+    app: hello
+  ports:
+  - port: 80
+    targetPort: 3000
+    nodePort: 30080
+```
+
+| 줄 | 뜻 |
+|---|---|
+| `type: NodePort` | 노드의 포트를 열어 클러스터 밖에서 들어오게 함 |
+| `nodePort: 30080` | 열 노드 포트. 비워 두면 30000~32767 중 하나를 자동으로 고름. 우리 kind 클러스터는 **VM의 8080번을 노드의 30080번에 미리 이어 두어서** 30080으로 정함 |
+
+```bash
+kubectl apply -f svc-ext.yaml
+kubectl get service
+curl localhost:8080
+```
+
+**이렇게 나오면 성공**
+
+```
+NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+hello        ClusterIP   10.96.178.3    <none>        80/TCP         8m23s
+hello-ext    NodePort    10.96.32.114   <none>        80:30080/TCP   0s
+kubernetes   ClusterIP   10.96.0.1      <none>        443/TCP        11m
+```
+```
+hello, docker
+```
+
+- `PORT(S) 80:30080` = Service의 80번, 노드의 30080번. NodePort도 `CLUSTER-IP`가 있습니다 — 클러스터 안에서는 `hello-ext`라는 이름으로도 부를 수 있습니다
+- `curl localhost:8080` → VM 8080 → 노드 30080 → Service → 파드 3000. port-forward를 켜지 않았는데 들어왔습니다. 브라우저는 PORTS 탭에서 `8080`
+
+이번에는 `type: NodePort`를 `type: LoadBalancer`로 바꿔 봅니다.
+
+```bash
+nano svc-ext.yaml          # type: NodePort → type: LoadBalancer
+kubectl apply -f svc-ext.yaml
+kubectl get service hello-ext
+```
+
+**이렇게 나오면 성공**
+
+```
+NAME        TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+hello-ext   LoadBalancer   10.96.32.114   <pending>     80:30080/TCP   1s
+```
+
+- `EXTERNAL-IP <pending>` = 외부 IP를 기다리는 중. 클라우드(AWS·kt cloud 등)라면 몇 분 안에 외부 IP가 붙지만, **kind에는 외부 IP를 줄 곳이 없어서 계속 `<pending>`** 입니다(미션 1 도전 B에서 다시 봄)
+- `PORT(S)`에 `80:30080`이 그대로 있습니다. LoadBalancer는 NodePort를 포함하므로 몇 초 뒤 `curl localhost:8080`은 여전히 `hello, docker`
+
+다 봤으면 `hello-ext`를 지웁니다. **꼭 지우세요** — 30080번은 나중에 API Gateway 과목이 씁니다.
+
+```bash
+kubectl delete -f svc-ext.yaml
+```
+
+- 여러 앱을 입구 하나로 나눠 보내는 방법은 10장 Ingress(실습 11)에서 봅니다
 
 ## 끝났는지 확인
 - ☐ `kubectl get endpointslices`에 hello 파드 IP 3개
 - ☐ `kubectl exec client -- wget -qO- hello`에 `hello, docker` (파드를 모두 지운 뒤에도)
 - ☐ port-forward 중 `curl localhost:8000`에 `hello, docker`
+- ☐ NodePort `hello-ext`로 `curl localhost:8080`에 `hello, docker`, LoadBalancer로 바꾸면 `EXTERNAL-IP <pending>`
 
 ## 정리
 - Service `hello`와 파드 `client`는 **실습 9·11에서 다시 씁니다**. 지우지 마세요
 - port-forward는 Ctrl+C로 끕니다
+- `hello-ext`는 7단계 끝에서 지웠는지 확인합니다(`kubectl get service`에 `hello`와 `kubernetes`만)
 
 ## 확인 문제
 1. `deploy.yaml`의 `replicas`를 5로 바꿔 적용한 뒤 `kubectl get endpointslices`를 보세요. 엔드포인트는 몇 개인가요? 확인한 뒤 3으로 되돌립니다.
 2. 6단계 port-forward 화면의 `Forwarding from 127.0.0.1:8000 -> 3000`에서 8000, 3000은 각각 무엇의 포트인가요? `service.yaml`의 `port: 80`은 이 경로에서 어디에 쓰였을까요?
+3. 7단계의 `svc-ext.yaml`에서 `nodePort: 30080`을 `nodePort: 8080`으로 바꿔 적용하면 어떻게 되나요? 왜 그럴까요? 확인한 뒤 파일은 30080으로 되돌립니다(Service는 7단계 끝처럼 지운 상태).
