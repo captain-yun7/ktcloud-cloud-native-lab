@@ -2,11 +2,11 @@
 
 # 실습 7. todo를 쿠버네티스에 — ConfigMap과 Secret
 
-**무엇을 하나요**: Docker 실습 13에서 Compose로 띄운 할 일 앱(web · api · db)을 쿠버네티스로 옮깁니다. 세 개가 각각 Deployment + Service이고, 서로 **Service 이름**(`db`, `api`)으로 부릅니다. api의 설정(DB 주소 등)은 **ConfigMap**에, DB 비밀번호는 **Secret**에 넣습니다. Compose의 `environment:`가 하던 일입니다. (교안 06장)
+**무엇을 하나요**: 먼저 설정 없이, 그리고 YAML에 값을 직접 적어 api를 띄워 보며 **설정을 이미지·YAML 밖에 두는 이유**를 봅니다. 그다음 Docker 실습 13에서 Compose로 띄운 할 일 앱(web · api · db)을 쿠버네티스로 옮깁니다. 세 개가 각각 Deployment + Service이고, 서로 **Service 이름**(`db`, `api`)으로 부릅니다. api의 설정(DB 주소 등)은 **ConfigMap**에, DB 비밀번호는 **Secret**에 넣습니다. Compose의 `environment:`가 하던 일입니다. (교안 06장)
 
 **필요한 것**: 저장소의 `lab/docker/todo`(Docker 실습 13의 앱)와 `lab/k8s/todo`(이 과목에서 받은 YAML 두 개). 터미널 두 개.
 
-> **바로 가기** · [1. 이미지 만들고 클러스터에 넣기](#1단계-이미지-만들고-클러스터에-넣기) · [2. 받은 파일 보기 — Compose와 비교](#2단계-받은-파일-보기--compose와-비교) · [3. 설정 — ConfigMap](#3단계-설정--configmap) · [4. 비밀번호 — Secret](#4단계-비밀번호--secret) · [5. db 띄우기](#5단계-db-띄우기) · [6. api 쓰기](#6단계-api-쓰기) · [7. web 띄우기](#7단계-web-띄우기) · [8. 화면과 API 확인 — port-forward](#8단계-화면과-api-확인--port-forward) · [9. ConfigMap을 파일로 넣어 보기](#9단계-configmap을-파일로-넣어-보기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. 이미지 만들고 클러스터에 넣기](#1단계-이미지-만들고-클러스터에-넣기) · [2. 받은 파일 보기 — Compose와 비교](#2단계-받은-파일-보기--compose와-비교) · [3. 설정 — 없으면 어떻게 되나, 그리고 ConfigMap](#3단계-설정--없으면-어떻게-되나-그리고-configmap) · [4. 비밀번호 — Secret](#4단계-비밀번호--secret) · [5. db 띄우기](#5단계-db-띄우기) · [6. api 쓰기](#6단계-api-쓰기) · [7. web 띄우기](#7단계-web-띄우기) · [8. 화면과 API 확인 — port-forward](#8단계-화면과-api-확인--port-forward) · [9. ConfigMap을 파일로 넣어 보기](#9단계-configmap을-파일로-넣어-보기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. 이미지 만들고 클러스터에 넣기
 
@@ -46,7 +46,54 @@ Docker 실습 13의 `compose.yaml`이 쿠버네티스에서 어떻게 나뉘는�
 
 - web(nginx)은 `/api/`로 온 요청을 `api:3000`으로 넘깁니다(`lab/docker/todo/web/default.conf`). 그래서 api의 Service 이름은 꼭 `api`, 포트는 3000이어야 합니다
 
-## 3단계. 설정 — ConfigMap
+## 3단계. 설정 — 없으면 어떻게 되나, 그리고 ConfigMap
+
+api는 DB가 어디 있는지(`DB_HOST`), 누구로 접속할지(`DB_USER`·`DB_PASSWORD`) 알아야 합니다. 이 값은 **환경마다 다릅니다** — 내 PC에서는 `localhost`, 이 클러스터에서는 Service 이름 `db`, 운영에서는 클라우드 DB 주소. 설정을 어디에 두는지에 따라 무엇이 달라지는지 차례로 봅니다.
+
+**가. 설정 없이 띄우면** — 이미지 안의 기본값을 씁니다.
+
+```bash
+kubectl run api-test --image=todo-api:v1
+kubectl logs api-test
+```
+
+**이렇게 나오면 성공**(실패하는 것이 정상)
+
+```
+waiting for database at localhost (1/15):
+waiting for database at localhost (2/15):
+```
+
+- 앱 코드(`lab/docker/todo/api/app.js`)에 `DB_HOST`가 없으면 `localhost`를 쓰도록 적혀 있습니다. 개발자 PC에는 맞지만 클러스터에서는 틀린 값입니다
+- 코드를 `db`로 고쳐 다시 빌드하면 되지만, 그러면 **환경마다 다른 이미지**가 필요합니다. 이미지는 하나로 두고 값만 밖에서 넣어야 합니다
+
+```bash
+kubectl delete pod api-test --now
+```
+
+**나. Deployment(파드) YAML에 값을 직접 적으면** — 됩니다. 다만 그 YAML을 보면:
+
+```bash
+kubectl run api-env --image=todo-api:v1 --env=DB_HOST=db --env=DB_PASSWORD=todo-pass --dry-run=client -o yaml | grep -A1 "name: DB_"
+```
+
+```
+    - name: DB_HOST
+      value: db
+    - name: DB_PASSWORD
+      value: todo-pass
+```
+
+- `--dry-run=client -o yaml` = 만들지 않고, 만들 YAML만 출력(실습 4). 이 YAML을 파일로 저장해 Git에 올리면 **비밀번호 `todo-pass`가 저장소를 볼 수 있는 모두에게 보입니다**
+- 같은 값(`DB_PASSWORD`)이 api와 db 두 파일에 따로 적혀 있어, 바꿀 때 둘 다 고쳐야 합니다
+
+| 설정을 두는 곳 | 좋은 점 | 문제 |
+|---|---|---|
+| 이미지(코드) 안 | 간단 | 환경마다 이미지를 다시 빌드 |
+| 파드 YAML에 직접 | 이미지는 하나 | 비밀번호가 파일·Git에 그대로, 같은 값이 여러 파일에 중복 |
+| **ConfigMap · Secret** | 이미지 하나 + 값은 한 곳 + 비밀은 따로 관리 | 환경변수로 넣으면 바꾼 뒤 다시 시작해야 함(확인 문제 1) |
+
+**다. ConfigMap으로** — 설정을 클러스터에 따로 저장하고, 파드는 "어느 ConfigMap을 쓸지"만 적습니다.
 
 ```bash
 nano todo-config.yaml
@@ -78,7 +125,7 @@ kubectl describe configmap todo-config
 
 ## 4단계. 비밀번호 — Secret
 
-비밀번호는 파일에 적지 않고 명령으로 바로 만듭니다(파일로 두면 저장소에 올라갈 수 있음).
+3단계 "나"에서 본 것처럼 비밀번호를 YAML에 적으면 파일·Git으로 퍼집니다. 그래서 비밀 값은 **Secret**에 따로 두고, 파드 YAML에는 "어느 Secret의 어느 키"인지만 적습니다. Secret도 파일에 적지 않고 명령으로 바로 만듭니다(파일로 두면 저장소에 올라갈 수 있음).
 
 ```bash
 kubectl create secret generic todo-secret --from-literal=DB_PASSWORD=todo-pass
@@ -211,6 +258,7 @@ DB_SERVICE_HOST=10.96.32.15
 
 - `connected to database at db` = api가 Service 이름 `db`로 DB를 찾았습니다(Docker 실습 13의 로그와 같음)
 - `DB_SERVICE_HOST` 같은 줄은 쿠버네티스가 Service마다 자동으로 넣어 주는 환경변수입니다. 우리 앱은 쓰지 않습니다(확인 문제 2)
+- `kubectl describe pod -l app=api | grep -A4 Environment`를 보면 `DB_PASSWORD:  <set to the key 'DB_PASSWORD' in secret 'todo-secret'>` — 3단계 "나"처럼 값을 직접 적었을 때는 이 자리에 `todo-pass`가 그대로 보입니다
 
 ## 7단계. web 띄우기
 
@@ -343,6 +391,7 @@ db
 
 ## 끝났는지 확인
 - ☐ `kubectl get pods`에 `api`·`db`·`web`이 `1/1 Running`
+- ☐ 설정 없는 `api-test`가 `localhost`로 DB를 찾다 실패하는 것을 봤다
 - ☐ `kubectl logs deploy/api`에 `connected to database at db`
 - ☐ port-forward 중 `curl localhost:8088/api/todos`로 넣은 할 일이 보였다
 - ☐ `kubectl exec cm-file -- cat /config/DB_HOST`에 `db`

@@ -2,11 +2,11 @@
 
 # 실습 9. Probe — 준비됐나, 살아 있나
 
-**무엇을 하나요**: hello Deployment에 **readinessProbe**(요청을 받을 준비가 됐나)와 **livenessProbe**(살아 있나)를 넣습니다. 일부러 검사를 틀리게 해서, 준비 안 된 파드에는 요청이 가지 않는 것(readiness)과 살아 있지 않다고 판단된 컨테이너가 다시 시작되는 것(liveness)을 봅니다. (교안 08장)
+**무엇을 하나요**: hello Deployment에 **readinessProbe**(요청을 받을 준비가 됐나)와 **livenessProbe**(살아 있나)를 넣습니다. 일부러 검사를 틀리게 해서, 준비 안 된 파드에는 요청이 가지 않는 것(readiness)과 살아 있지 않다고 판단된 컨테이너가 다시 시작되는 것(liveness)을 봅니다. 그 사이에 **멈춘 앱을 liveness가 없을 때와 있을 때** 나란히 띄워 왜 필요한지도 확인합니다. (교안 08장)
 
 **필요한 것**: 실습 6의 Deployment `hello`·Service `hello`·파드 `client`.
 
-> **바로 가기** · [1. Probe를 넣은 파일 쓰기](#1단계-probe를-넣은-파일-쓰기) · [2. readiness가 실패하면 — 요청을 안 보냄](#2단계-readiness가-실패하면--요청을-안-보냄) · [3. liveness가 실패하면 — 다시 시작](#3단계-liveness가-실패하면--다시-시작) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. Probe를 넣은 파일 쓰기](#1단계-probe를-넣은-파일-쓰기) · [2. readiness가 실패하면 — 요청을 안 보냄](#2단계-readiness가-실패하면--요청을-안-보냄) · [3. 멈춘 앱 — liveness가 없으면, 있으면](#3단계-멈춘-앱--liveness가-없으면-있으면) · [4. liveness가 실패하면 — 다시 시작](#4단계-liveness가-실패하면--다시-시작) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. Probe를 넣은 파일 쓰기
 
@@ -133,7 +133,84 @@ kubectl apply -f probe.yaml
 kubectl rollout status deployment/hello
 ```
 
-## 3단계. liveness가 실패하면 — 다시 시작
+## 3단계. 멈춘 앱 — liveness가 없으면, 있으면
+
+livenessProbe가 왜 필요한지 먼저 봅니다. 앱이 **꺼지지는 않았는데 멈춘** 경우가 있습니다(무한 대기, 데드락 등). 프로세스는 살아 있으니 쿠버네티스 눈에는 `Running`입니다. 30초 뒤 멈추는 앱을 흉내 낸 파드 두 개를 만듭니다. 하나는 livenessProbe가 없고(`stuck`), 하나는 있습니다(`stuck-live`).
+
+```bash
+nano stuck.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stuck
+spec:
+  containers:
+  - name: app
+    image: busybox:1.37
+    command: ["sh", "-c", "touch /tmp/healthy; sleep 30; rm /tmp/healthy; sleep infinity"]
+```
+
+- `/tmp/healthy` 파일이 있는 동안을 "정상", 30초 뒤 파일을 지우고 아무 일도 안 하는 상태를 "멈춤"으로 흉내 냄
+
+`cp stuck.yaml stuck-live.yaml` 후 `stuck-live.yaml`에서 `name: stuck`을 `name: stuck-live`로 바꾸고, 맨 아래에 다섯 줄을 붙입니다(`command:`와 같은 들여쓰기, 스페이스 4칸).
+
+```bash
+cp stuck.yaml stuck-live.yaml
+nano stuck-live.yaml
+```
+
+```yaml
+    livenessProbe:
+      exec:
+        command: ["cat", "/tmp/healthy"]
+      periodSeconds: 5
+      failureThreshold: 3
+```
+
+- `exec` = 컨테이너 안에서 명령을 실행해 성공(종료 코드 0)이면 살아 있음. 파일이 없어지면 `cat`이 실패 → 5초마다 3번 연달아 실패하면 다시 시작
+
+```bash
+kubectl apply -f stuck.yaml -f stuck-live.yaml
+kubectl get pods stuck stuck-live -w
+```
+
+2분쯤 지켜본 뒤 Ctrl+C.
+
+**이렇게 나오면 성공**
+
+```
+NAME         READY   STATUS    RESTARTS      AGE
+stuck        1/1     Running   0             2m
+stuck-live   1/1     Running   1 (45s ago)   2m
+```
+
+```bash
+kubectl describe pod stuck-live | grep -E "Unhealthy|Killing"
+```
+
+```
+Warning  Unhealthy  … Liveness probe failed: cat: can't open '/tmp/healthy': No such file or directory
+Normal   Killing    … Container app failed liveness probe, will be restarted
+```
+
+| | liveness 없음 (`stuck`) | liveness 있음 (`stuck-live`) |
+|---|---|---|
+| 30초 뒤 멈춘 다음 | 계속 `Running`, `RESTARTS 0` — **쿠버네티스는 멈춘 줄 모름** | 검사 3번 실패 → 컨테이너 다시 시작(`RESTARTS 1`) |
+| 누가 고치나 | 사람이 알아채고 지워야 함(밤새 멈춰 있을 수 있음) | 쿠버네티스가 자동으로(약 75초 뒤) |
+
+- 다시 시작하면 파일이 새로 생겨 30초 동안 정상 → 또 멈춤 → 또 다시 시작을 반복합니다. 진짜 앱이라면 다시 시작으로 풀리는 멈춤을 사람 없이 복구하는 것입니다
+- 다음 단계에서는 반대로, **검사를 잘못 적으면** 멀쩡한 앱을 계속 죽이는 것을 봅니다
+
+다 봤으면 지웁니다.
+
+```bash
+kubectl delete pod stuck stuck-live --now
+```
+
+## 4단계. liveness가 실패하면 — 다시 시작
 
 이번에는 **livenessProbe**의 `port: 3000`을 `port: 3001`로 고칩니다(앱이 없는 포트라 검사가 계속 실패). readinessProbe는 그대로 둡니다.
 
@@ -206,6 +283,7 @@ kubectl get pods -l app=hello
 
 ## 끝났는지 확인
 - ☐ readiness를 틀렸을 때 새 파드가 `0/1 Running`이었고, `wget hello`는 계속 응답했다
+- ☐ liveness가 없는 `stuck`은 계속 `RESTARTS 0`, 있는 `stuck-live`는 다시 시작됐다
 - ☐ liveness를 틀렸을 때 `RESTARTS`가 늘어났고, `Liveness probe failed`를 Events에서 찾았다
 - ☐ 마지막에 `probe.yaml`이 처음 모양(path `/`, port 3000 두 곳)이고 파드 3개 `1/1`
 
@@ -219,4 +297,4 @@ kubectl get pods -l app=hello
    for i in $(seq 1 30); do curl -s -o /dev/null -w "%{http_code} " localhost:8088/api/todos; sleep 0.5; done; echo
    ```
    (`for … done` = 안의 명령을 30번 반복. 0.5초마다 응답 코드만 찍음)
-2. 3단계의 `Exit Code: 137`은 무슨 뜻일까요? 앱이 스스로 끝났을 때(정상 종료)의 종료 코드와 비교하세요.
+2. 4단계의 `Exit Code: 137`은 무슨 뜻일까요? 앱이 스스로 끝났을 때(정상 종료)의 종료 코드와 비교하세요.

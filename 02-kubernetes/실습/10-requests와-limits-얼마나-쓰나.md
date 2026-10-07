@@ -2,13 +2,92 @@
 
 # 실습 10. requests와 limits — 얼마나 쓰나
 
-**무엇을 하나요**: hello 파드에 CPU·메모리 **requests**(예약)와 **limits**(최대)를 적습니다. 그리고 너무 많이 예약해서 자리를 못 잡는 파드(`Pending`)와, 메모리 최대치를 넘어 강제로 꺼지는 파드(`OOMKilled`)를 일부러 만들어 봅니다. (교안 08장)
+**무엇을 하나요**: hello 파드에 CPU·메모리 **requests**(예약)와 **limits**(최대)를 적습니다. 그리고 너무 많이 예약해서 자리를 못 잡는 파드(`Pending`)와, 메모리 최대치를 넘어 강제로 꺼지는 파드(`OOMKilled`)를 일부러 만들어 봅니다. 그 전에 **아무것도 안 적은 파드가 노드 자원을 마음대로 쓰는 것**을 먼저 보고, 마지막으로 사용량에 따라 개수를 자동으로 늘리는 HPA를 봅니다. (교안 08장)
 
 **필요한 것**: 실습 9의 `probe.yaml`(hello).
 
-> **바로 가기** · [1. requests·limits 넣기](#1단계-requestslimits-넣기) · [2. 일부러 실패하는 파드 두 개](#2단계-일부러-실패하는-파드-두-개) · [3. 자동으로 늘리기 — HPA](#3단계-자동으로-늘리기--hpa) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. 안 적으면 어떻게 되나](#1단계-안-적으면-어떻게-되나--한-파드가-다-쓴다) · [2. requests·limits 넣기](#2단계-requestslimits-넣기) · [3. 일부러 실패하는 파드 두 개](#3단계-일부러-실패하는-파드-두-개) · [4. 자동으로 늘리기 — HPA](#4단계-자동으로-늘리기--hpa) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
-## 1단계. requests·limits 넣기
+## 1단계. 안 적으면 어떻게 되나 — 한 파드가 다 쓴다
+
+지금까지 만든 파드에는 CPU·메모리를 얼마나 쓸지 아무것도 적지 않았습니다. 그러면 쿠버네티스는 이 파드가 **얼마나 쓸지 모르고, 얼마나 쓰든 막지 않습니다.** 메모리를 300Mi까지 쓰는 파드 `hog`로 확인합니다.
+
+```bash
+cd ~/ktcloud-cloud-native-lab/lab/k8s/hello
+nano hog.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hog
+spec:
+  containers:
+  - name: hog
+    image: busybox:1.37
+    command: ["sh", "-c", "tail -c 314572800 /dev/zero"]
+```
+
+- `tail -c 314572800 /dev/zero` = 끝없이 나오는 0을 읽으며 마지막 300MB(314,572,800바이트)를 메모리에 쥐고 있음. 메모리를 많이 쓰는 앱(또는 메모리가 새는 버그)을 흉내 냄
+
+```bash
+kubectl apply -f hog.yaml
+kubectl top pod hog
+kubectl get pod hog -o jsonpath='{.status.qosClass}'; echo
+kubectl describe node lab-control-plane | grep hog
+```
+
+`top`이 `not found`이면 30초쯤 뒤 다시 칩니다.
+
+**이렇게 나오면 성공**
+
+```
+NAME   CPU(cores)   MEMORY(bytes)
+hog    998m         300Mi
+BestEffort
+  default    hog    0 (0%)    0 (0%)    0 (0%)    0 (0%)    41s
+```
+
+| 화면 | 뜻 |
+|---|---|
+| `998m · 300Mi` | 파드 하나가 **CPU 1개를 통째로**, 메모리를 300Mi 씀. 아무도 막지 않음. 메모리가 새는 앱이라면 노드의 메모리가 바닥날 때까지 늘어남 |
+| `BestEffort` | 아무것도 적지 않은 파드의 등급. 노드 메모리가 모자라면 **가장 먼저 쫓겨남** |
+| `0 (0%)` 네 개 | 이 파드가 예약한 CPU·메모리가 0. 스케줄러는 이 파드가 얼마나 쓸지 모른 채 노드에 둠 — 이런 파드가 한 노드에 몰리면 노드가 버티지 못함 |
+
+이번에는 `limits`로 메모리 상한 128Mi를 줍니다. `command:` 줄 바로 위에 세 줄을 넣습니다.
+
+```bash
+kubectl delete pod hog --now
+nano hog.yaml
+```
+
+```yaml
+    image: busybox:1.37
+    resources:
+      limits:
+        memory: 128Mi
+    command: ["sh", "-c", "tail -c 314572800 /dev/zero"]
+```
+
+```bash
+kubectl apply -f hog.yaml
+kubectl get pod hog
+kubectl describe pod hog | grep -A3 "Last State"
+```
+
+**이렇게 나오면 성공**: 몇 초 안에 `hog   0/1   OOMKilled`(또는 `CrashLoopBackOff`), `Reason: OOMKilled`, `Exit Code: 137`.
+
+- 상한(128Mi)을 넘자 **hog만** 꺼졌습니다. 같은 노드의 hello·todo 파드는 그대로입니다(`kubectl get pods`). 안 적었을 때는 hog가 노드 자원을 마음대로 썼고, 적으니 그 파드 안에서 끝났습니다
+- 그래서 실제 서비스의 파드에는 **requests(이만큼 자리를 잡아 줘)와 limits(이 이상은 못 씀)를 적습니다.** 2단계에서 hello에 넣습니다
+
+다 봤으면 지웁니다.
+
+```bash
+kubectl delete pod hog --now
+```
+
+## 2단계. requests·limits 넣기
 
 `probe.yaml`에 `resources:` 7줄을 더한 `res.yaml`을 씁니다.
 
@@ -87,7 +166,7 @@ Allocated resources:
 - `Allocated resources` = 노드에서 **예약된** 양의 합계(클러스터 구성 요소 포함). 4코어 노드의 30%가 예약됨
 - `top`이 `metrics not available yet`이면 새 파드라 아직 숫자가 없는 것. 30초쯤 뒤 다시
 
-## 2단계. 일부러 실패하는 파드 두 개
+## 3단계. 일부러 실패하는 파드 두 개
 
 ```bash
 nano res-test.yaml
@@ -175,9 +254,9 @@ kubectl delete -f res-test.yaml
 
 </details>
 
-## 3단계. 자동으로 늘리기 — HPA
+## 4단계. 자동으로 늘리기 — HPA
 
-지금까지 파드 개수는 사람이 파일의 `replicas`를 고쳐 바꿨습니다. **HPA**(HorizontalPodAutoscaler)는 파드의 CPU 사용량을 보고 이 숫자를 대신 바꿔 줍니다. 1단계에서 넣은 `requests`가 기준이 됩니다.
+지금까지 파드 개수는 사람이 파일의 `replicas`를 고쳐 바꿨습니다. **HPA**(HorizontalPodAutoscaler)는 파드의 CPU 사용량을 보고 이 숫자를 대신 바꿔 줍니다. 2단계에서 넣은 `requests`가 기준이 됩니다.
 
 ```bash
 kubectl autoscale deployment hello --cpu=50% --min=3 --max=6
@@ -238,7 +317,7 @@ kubectl get deployment hello
 
 | 화면 | 원인 | 해결 |
 |---|---|---|
-| `TARGETS`가 계속 `cpu: <unknown>/50%` | 사용량을 아직 못 잼, 또는 파드에 requests가 없음 | 30초 뒤 다시. 계속이면 1단계 `res.yaml`이 적용됐는지(`kubectl describe hpa hello`의 Events에 `missing request for cpu`) |
+| `TARGETS`가 계속 `cpu: <unknown>/50%` | 사용량을 아직 못 잼, 또는 파드에 requests가 없음 | 30초 뒤 다시. 계속이면 2단계 `res.yaml`이 적용됐는지(`kubectl describe hpa hello`의 Events에 `missing request for cpu`) |
 | `Flag --cpu-percent has been deprecated` 경고 | 옛 옵션을 씀 | 그대로 동작함. 새 모양은 `--cpu=50%` |
 | `Error from server (AlreadyExists): … "hello" already exists` | HPA를 이미 만듦 | 그대로 진행, 또는 `kubectl delete hpa hello` 후 다시 |
 | `Error from server (AlreadyExists): pods "load" already exists` | `load`를 이미 띄움 | `kubectl get pods load`로 확인 |
@@ -247,14 +326,16 @@ kubectl get deployment hello
 </details>
 
 ## 끝났는지 확인
+- ☐ 아무것도 안 적은 `hog`가 `300Mi`를 쓰고, `limits: memory: 128Mi`를 넣으니 `OOMKilled`
 - ☐ `kubectl top pods`로 hello의 실제 메모리를 봤다
 - ☐ `big`이 `Pending`이고 Events에 `Insufficient cpu`
 - ☐ `tiny`가 `OOMKilled`이고 `Last State`의 `Reason: OOMKilled`
 - ☐ `load`를 띄운 뒤 `kubectl get hpa`의 `REPLICAS`가 3보다 커졌다
 
 ## 정리
-- `big`·`tiny`는 2단계 끝에서 지웠습니다. hello는 이제 `res.yaml`의 것입니다(실습 11에서 씀)
-- `load` 파드와 HPA는 3단계 끝에서 지웠습니다. `kubectl get hpa` → `No resources found`, `kubectl get deployment hello` → `3/3`
+- `hog`는 1단계 끝에서 지웠습니다(`kubectl get pod hog` → `NotFound`)
+- `big`·`tiny`는 3단계 끝에서 지웠습니다. hello는 이제 `res.yaml`의 것입니다(실습 11에서 씀)
+- `load` 파드와 HPA는 4단계 끝에서 지웠습니다. `kubectl get hpa` → `No resources found`, `kubectl get deployment hello` → `3/3`
 
 ## 확인 문제
 1. `res-test.yaml`에서 `big`의 `cpu: "8"`을 `cpu: "1"`로 고쳐 `kubectl apply -f res-test.yaml` 하세요. 무슨 오류가 나오나요? 어떻게 하면 `big`이 `Running`이 되나요? 확인한 뒤 `kubectl delete -f res-test.yaml`.

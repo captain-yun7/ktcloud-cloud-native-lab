@@ -6,6 +6,18 @@
 
 **필요한 것**: 실습 11의 Traefik(확인 문제 1). 메모리 여유 — 미션 1의 `mission1` 네임스페이스가 남아 있으면 먼저 지웁니다(`kubectl delete namespace mission1`).
 
+**왜 필요한가요**: 미션 1에서 서비스 6개의 YAML을 손으로 쓰고 `kubectl apply`로 올렸습니다. Online Boutique 전체는 Deployment·Service·ServiceAccount가 **33개**입니다. 이것을 `kubectl`로만 관리하면 이렇게 됩니다.
+
+| 할 일 | `kubectl apply -f` 파일들 (미션 1 방식) | Helm |
+|---|---|---|
+| 설치 | YAML 33개를 쓰고 하나씩(또는 폴더째) apply | `helm install` 한 줄 |
+| 값 바꾸기(이미지 버전·옵션) | 여러 파일에서 찾아 고침 | 값 파일 하나(`my-values.yaml`)나 `--set` |
+| 지금 무엇이 몇 번째로 설치됐나 | 기억·메모에 의존 | `helm list`·`helm history`(REVISION 번호) |
+| 되돌리기 | Deployment마다 `rollout undo`, Service 등은 못 되돌림 | `helm rollback` 한 번에 전체 |
+| 지우기 | 파일을 다 찾아 delete, 빠뜨리면 남음 | `helm uninstall` 한 번 |
+
+실습 11의 `make ingress`(Traefik)도 안에서 `helm`으로 설치했습니다. 다음 과목의 Kyverno(보안)·Argo CD(CI/CD)·Prometheus와 Loki(모니터링)·Envoy Gateway(API Gateway)도 모두 `make`가 안에서 Helm 차트로 설치합니다(`lab/Makefile`).
+
 > **바로 가기** · [1. 차트 받기](#1단계-차트-받기) · [2. 바꿀 값 적기](#2단계-바꿀-값-적기) · [3. 설치](#3단계-설치) · [4. 값을 바꿔 업그레이드, 그리고 되돌리기](#4단계-값을-바꿔-업그레이드-그리고-되돌리기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. 차트 받기

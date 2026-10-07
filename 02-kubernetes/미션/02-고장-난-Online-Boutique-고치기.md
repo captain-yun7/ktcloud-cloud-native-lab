@@ -40,7 +40,7 @@ kubectl apply -n broken -f shop-broken.yaml
 </details>
 <details><summary>힌트 4 — 계속 재시작하는 파드</summary>
 
-`describe`의 Events에 무엇이 실패했다고 나오나요? 앱이 실제로 쓰는 포트와 비교하세요(실습 9 3단계).
+`describe`의 Events에 무엇이 실패했다고 나오나요? 앱이 실제로 쓰는 포트와 비교하세요(실습 9 4단계).
 </details>
 
 ## 도전 (선택)
