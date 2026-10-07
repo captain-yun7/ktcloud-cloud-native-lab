@@ -2,7 +2,7 @@
 
 # 실습 11. Ingress — 주소 하나로 나눠 보내기
 
-**무엇을 하나요**: Ingress 컨트롤러(Traefik)를 설치하고, 규칙 하나로 `hello.localhost`는 hello로, `todo.localhost`는 todo 화면(web)으로 보냅니다. port-forward 없이 VM의 80번 하나로 두 앱에 들어갑니다. (교안 10장)
+**무엇을 하나요**: Ingress 컨트롤러(Traefik)를 설치하고, 규칙 하나로 `hello.localhost`는 hello로, `todo.localhost`는 todo 화면(web)으로 보냅니다. port-forward 없이 VM의 80번 하나로 두 앱에 들어갑니다. (교안 09장)
 
 **필요한 것**: Service `hello`(실습 6), todo의 Service `web`(실습 7).
 

@@ -136,7 +136,7 @@ curl localhost:8000
 
 다 봤으면 **터미널 1에서 Ctrl+C**. 그 뒤에는 `curl localhost:8000`이 `Failed to connect`입니다.
 
-- port-forward는 내 VM에서 잠깐 확인할 때 쓰는 방법입니다. 여러 사람이 쓰는 입구는 10장 Ingress에서 만듭니다
+- port-forward는 내 VM에서 잠깐 확인할 때 쓰는 방법입니다. 여러 사람이 쓰는 입구는 09장 Ingress에서 만듭니다
 
 <details><summary><b>이렇게 나오면?</b> — 자주 나는 오류와 해결 (눌러서 펼치기)</summary>
 
@@ -236,7 +236,7 @@ hello-ext   LoadBalancer   10.96.32.114   <pending>     80:30080/TCP   1s
 kubectl delete -f svc-ext.yaml
 ```
 
-- 여러 앱을 입구 하나로 나눠 보내는 방법은 10장 Ingress(실습 11)에서 봅니다
+- 여러 앱을 입구 하나로 나눠 보내는 방법은 09장 Ingress(실습 11)에서 봅니다
 
 ## 끝났는지 확인
 - ☐ `kubectl get endpointslices`에 hello 파드 IP 3개

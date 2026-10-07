@@ -33,7 +33,7 @@
 | 8 | [실습 8. postgres 데이터를 PVC에](./실습/08-postgres-데이터를-PVC에.md) | 07 |
 | 9 | [실습 9. Probe — 준비됐나, 살아 있나](./실습/09-Probe-준비됐나-살아-있나.md) | 08 |
 | 10 | [실습 10. requests와 limits — 얼마나 쓰나](./실습/10-requests와-limits-얼마나-쓰나.md) | 08 |
-| — | **[미션 2. 고장 난 Online Boutique 고치기](./미션/02-고장-난-Online-Boutique-고치기.md)** (미션 문서) | 09 뒤 |
-| 11 | [실습 11. Ingress — 주소 하나로 나눠 보내기](./실습/11-Ingress-주소-하나로-나눠-보내기.md) | 10 |
-| 12 | [실습 12. Helm — Online Boutique를 한 번에](./실습/12-Helm-Online-Boutique를-한-번에.md) | 11 |
+| — | **[미션 2. 고장 난 Online Boutique 고치기](./미션/02-고장-난-Online-Boutique-고치기.md)** (미션 문서) | 08 뒤 |
+| 11 | [실습 11. Ingress — 주소 하나로 나눠 보내기](./실습/11-Ingress-주소-하나로-나눠-보내기.md) | 09 |
+| 12 | [실습 12. Helm — Online Boutique를 한 번에](./실습/12-Helm-Online-Boutique를-한-번에.md) | 10 |
 | — | [자주 쓴 명령과 오류 한눈에](./실습/99-자주-쓴-명령과-오류.md) | — |
