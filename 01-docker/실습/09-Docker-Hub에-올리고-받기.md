@@ -2,13 +2,13 @@
 
 # 실습 9. Docker Hub에 올리고 받기
 
-**무엇을 하나요**: 실습 7에서 만든 `hello:v2` 이미지를 내 Docker Hub(인터넷의 이미지 창고, 레지스트리) 계정에 올리고(push), 내 VM에서 지운 뒤 다시 받아(pull) 실행합니다. 옆 사람의 이미지도 받아 실행해 봅니다. 이미지를 한 번 올려 두면 어느 컴퓨터에서든 같은 앱을 받아 실행할 수 있다는 것을 확인합니다. (교안 06장)
+**무엇을 하나요**: 먼저 내 이미지가 옆 VM에는 없고, 이름 그대로는 올릴 수도 없다는 것을 봅니다. 그다음 실습 7에서 만든 `hello:v2` 이미지를 내 Docker Hub(인터넷의 이미지 창고, 레지스트리) 계정에 올리고(push), 내 VM에서 지운 뒤 다시 받아(pull) 실행합니다. 옆 사람의 이미지도 받아 실행해 봅니다. 이미지를 한 번 올려 두면 어느 컴퓨터에서든 같은 앱을 받아 실행할 수 있다는 것을 확인합니다. (교안 06장)
 
 **필요한 것**: 실습 7의 `hello:v2` 이미지, Docker Hub 계정(없으면 0단계에서 만듦).
 
 아래 `<아이디>`는 본인 Docker Hub 아이디로 바꿉니다(예: `kim123`). 꺾쇠(`<` `>`)도 지웁니다.
 
-> **바로 가기** · [0. Docker Hub 가입 (계정이 있으면 건너뜀)](#0단계-docker-hub-가입-계정이-있으면-건너뜀) · [1. 로그인](#1단계-로그인) · [2. 이름 붙이기(tag) → 올리기(push)](#2단계-이름-붙이기tag--올리기push) · [3. 지우고 다시 받아 실행](#3단계-지우고-다시-받아-실행) · [4. 옆 사람 이미지 받아 보기](#4단계-옆-사람-이미지-받아-보기) · [Docker Hub 로그인이 막히면 — 연습용 레지스트리](#docker-hub-로그인이-막히면--연습용-레지스트리) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [0. Docker Hub 가입 (계정이 있으면 건너뜀)](#0단계-docker-hub-가입-계정이-있으면-건너뜀) · [1. 없이 먼저 — 옆 VM에는 없고, 이름 그대로는 못 올림](#1단계-없이-먼저--옆-vm에는-없고-이름-그대로는-못-올림) · [2. 로그인](#2단계-로그인) · [3. 이름 붙이기(tag) → 올리기(push)](#3단계-이름-붙이기tag--올리기push) · [4. 지우고 다시 받아 실행](#4단계-지우고-다시-받아-실행) · [5. 옆 사람 이미지 받아 보기](#5단계-옆-사람-이미지-받아-보기) · [Docker Hub 로그인이 막히면 — 연습용 레지스트리](#docker-hub-로그인이-막히면--연습용-레지스트리) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 0단계. Docker Hub 가입 (계정이 있으면 건너뜀)
 
@@ -21,7 +21,43 @@
 4. 가입한 이메일로 온 **인증 메일**을 열어 확인 버튼을 누릅니다
 5. Docker Hub에 로그인되면 끝입니다. 오른쪽 위 프로필에서 내 아이디를 확인해 둡니다
 
-## 1단계. 로그인
+## 1단계. 없이 먼저 — 옆 VM에는 없고, 이름 그대로는 못 올림
+
+실습 7에서 만든 `hello:v2`는 내 VM에만 있습니다. 옆 사람 VM에서 `docker run hello:v2`를 하면 어떻게 될까요. 내 VM에 없는 태그(`v9`)로 같은 상황을 만들어 봅니다. 이어서 이름을 그대로 둔 채 올려(push) 봅니다. **둘 다 실패하는 것이 정상**입니다.
+
+```bash
+docker run --rm hello:v9        # 내 VM에 없는 이미지 = 옆 VM에서 hello:v2를 run할 때와 같음
+docker push hello:v2            # 아이디 없이, 로그인 없이 올려 보기
+```
+
+**이 명령은**
+- `docker run --rm hello:v9` = VM에 없는 이미지로 실행. Docker는 VM에서 먼저 찾고, 없으면 레지스트리에서 받으려 함
+- `docker push hello:v2` = `hello:v2`를 레지스트리에 올리려 함
+
+**이렇게 나오면 성공** — 화면 예(둘 다 실패)
+
+```
+Unable to find image 'hello:v9' locally
+docker: Error response from daemon: failed to resolve reference "docker.io/library/hello:v9": docker.io/library/hello:v9: not found
+```
+
+```
+The push refers to repository [docker.io/library/hello]
+…: Waiting
+push access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
+```
+
+- 첫 번째: "VM에 없음 → `docker.io/library/hello`에서 찾았지만 없음(not found)"
+- 두 번째: "`docker.io/library/hello`로 올리려 했지만 거부됨(push access denied)". `Waiting` 줄 수는 달라도 됩니다. 2초쯤 걸립니다
+
+| 이미지 이름 | Docker가 찾고 올리는 곳 | 결과 |
+|---|---|---|
+| `hello:v2` (아이디 없음) | `docker.io/library/hello` — Docker Hub의 공식 이미지 자리 | 받기 not found, 올리기 거부 |
+| `<아이디>/hello:v2` | `docker.io/<아이디>/hello` — 내 저장소 | 로그인하면 올라가고(3단계), 누구나 받음(4·5단계) |
+
+이름 앞에 레지스트리·계정이 없으면 Docker는 `docker.io/library`(공식 이미지 자리)로 봅니다. 그래서 공유하려면 이름에 내 아이디를 붙여(tag) 올립니다. 이제 로그인부터 합니다.
+
+## 2단계. 로그인
 
 서버 VM 터미널에서 실행합니다.
 
@@ -68,7 +104,7 @@ Password:
 
 - 로그인 정보는 VM의 `~/.docker/config.json`에 저장됩니다. 실습이 끝나면 `docker logout`으로 지울 수 있습니다
 
-## 2단계. 이름 붙이기(tag) → 올리기(push)
+## 3단계. 이름 붙이기(tag) → 올리기(push)
 
 Docker Hub에 올릴 이미지의 이름은 `아이디/저장소:태그` 모양이어야 합니다. 그래야 Docker가 "누구의 창고에 올릴지" 압니다.
 
@@ -104,7 +140,7 @@ v2: digest: sha256:… size: 856
 
 </details>
 
-## 3단계. 지우고 다시 받아 실행
+## 4단계. 지우고 다시 받아 실행
 
 ```bash
 docker rmi <아이디>/hello:v2                   # Untagged: <아이디>/hello:v2 (이름표만 뗌)
@@ -112,7 +148,7 @@ docker run -d --name from-hub -p 8002:3000 <아이디>/hello:v2
 ```
 
 **이 명령은**
-- `docker rmi <아이디>/hello:v2` = 2단계에서 붙인 이름표를 뗌. VM에 그 이름의 이미지가 없어짐
+- `docker rmi <아이디>/hello:v2` = 3단계에서 붙인 이름표를 뗌. VM에 그 이름의 이미지가 없어짐
 - `docker run …` = 그 이름으로 실행 → VM에 없으니 Docker Hub에서 받아 옴
 
 **이렇게 나오면 성공** — 화면 예
@@ -132,7 +168,7 @@ curl localhost:8002         # hello, 본인이름
 
 `docker run`은 이미지가 VM에 없으면 레지스트리에서 받아(pull) 실행합니다. 다른 VM, 다른 사람의 컴퓨터에서도 이 명령 한 줄로 같은 앱이 돕니다.
 
-## 4단계. 옆 사람 이미지 받아 보기
+## 5단계. 옆 사람 이미지 받아 보기
 
 옆 사람의 Docker Hub 아이디를 물어 받아 실행합니다. 공개 저장소는 로그인 없이도 받을 수 있습니다.
 
@@ -148,7 +184,7 @@ docker rm -f friend
 
 | 화면 | 원인 | 해결 |
 |---|---|---|
-| `failed to resolve reference "docker.io/…/hello:v2": … not found` | 그런 이미지가 없음 — 옆 사람 아이디 오타, 또는 옆 사람이 아직 push 전 | 아이디 확인, 옆 사람이 2단계를 끝냈는지 확인 |
+| `failed to resolve reference "docker.io/…/hello:v2": … not found` | 그런 이미지가 없음 — 옆 사람 아이디 오타, 또는 옆 사람이 아직 push 전 | 아이디 확인, 옆 사람이 3단계를 끝냈는지 확인 |
 
 </details>
 
@@ -172,10 +208,12 @@ curl localhost:5000/v2/_catalog               # {"repositories":["hello"]}
 - 이미 Docker Hub로 `from-hub`를 만든 경우 이름이 겹칩니다(`Conflict`). `docker rm -f from-hub` 후 실행합니다
 
 ## 끝났는지 확인
+- ☐ 1단계에서 `hello:v9` run은 `not found`, `hello:v2` push는 `push access denied`로 실패했다
 - ☐ Docker Hub 웹에서 내 `hello` 저장소에 `v2`가 보인다 (연습용 레지스트리를 썼다면 `_catalog`에 `hello`)
 - ☐ 받아서 실행한 `curl localhost:8002`에 내 이름이 나온다
 
 ## 정리
+1단계는 실패만 보는 단계라 지울 것이 없습니다.
 확인 문제까지 끝났으면, 실습 7부터 켜 둔 컨테이너는 이제 지워도 됩니다. 이미지(`hello:v1`, `hello:v2`)는 두어도 됩니다.
 
 ```bash

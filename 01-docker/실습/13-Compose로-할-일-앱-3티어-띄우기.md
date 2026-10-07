@@ -2,26 +2,33 @@
 
 # 실습 13. Compose로 할 일 앱(3티어) 띄우기
 
-**무엇을 하나요**: 화면(web) · API(api) · DB(db) 세 컨테이너를 `compose.yaml` 파일 하나에 적고, 명령 한 줄로 띄우고 내립니다. 실습 12에서 긴 명령 여러 줄로 하던 일을 파일로 정리하는 것입니다. (3티어 = 화면·API·DB 세 층으로 나눈 앱 구조) (교안 09장)
+**무엇을 하나요**: 먼저 실습 12에서 만든 컨테이너와 네트워크를 docker 명령으로 하나씩 지워 보고, 마지막에 Compose의 `down` 한 줄과 비교합니다. 화면(web) · API(api) · DB(db) 세 컨테이너를 `compose.yaml` 파일 하나에 적고, 명령 한 줄로 띄우고 내립니다. 실습 12에서 긴 명령 여러 줄로 하던 일을 파일로 정리하는 것입니다. (3티어 = 화면·API·DB 세 층으로 나눈 앱 구조) (교안 09장)
 
-**필요한 것**: 실습 3에서 받은 저장소의 `lab/docker/todo` 폴더. 실습 12의 컨테이너는 지운 상태.
+**필요한 것**: 실습 3에서 받은 저장소의 `lab/docker/todo` 폴더. 실습 12의 컨테이너는 1단계에서 지웁니다(이미 지웠어도 됨).
 
-> **바로 가기** · [1. 폴더 둘러보기](#1단계-폴더-둘러보기) · [2. compose.yaml 쓰기](#2단계-composeyaml-쓰기) · [3. 문법 검사](#3단계-문법-검사) · [4. 띄우기](#4단계-띄우기) · [5. 화면과 API 확인](#5단계-화면과-api-확인) · [6. 내리고 다시 올리기](#6단계-내리고-다시-올리기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. 실습 12 손으로 정리, 폴더 둘러보기](#1단계-실습-12-손으로-정리-폴더-둘러보기) · [2. compose.yaml 쓰기](#2단계-composeyaml-쓰기) · [3. 문법 검사](#3단계-문법-검사) · [4. 띄우기](#4단계-띄우기) · [5. 화면과 API 확인](#5단계-화면과-api-확인) · [6. 내리고 다시 올리기](#6단계-내리고-다시-올리기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
-## 1단계. 폴더 둘러보기
+## 1단계. 실습 12 손으로 정리, 폴더 둘러보기
+
+**가. 실습 12를 docker 명령으로 정리** — 실습 12에서 만든 것을 기억해서 하나씩 지웁니다.
 
 ```bash
-cd ~/ktcloud-cloud-native-lab/lab/docker/todo
-ls                        # api  web
+docker rm -f api db
+docker network rm todo-net
 ```
 
-**이렇게 나오면 성공**: `api  web` 두 폴더. 프롬프트가 `…/lab/docker/todo$`(api 폴더 **안이 아니라** todo 폴더).
+**이 명령은**: `docker rm -f api db` = 컨테이너 `api`, `db`를 (켜져 있어도) 지움. `docker network rm todo-net` = 네트워크는 따로 지움.
 
-| 폴더·이미지 | 역할 |
-|---|---|
-| `web/` (nginx) | 화면(HTML·JS)을 주고, `/api/`로 오는 요청은 `api:3000`으로 넘김 |
-| `api/` (Node) | 실습 12의 API |
-| `postgres:17-alpine` | DB. 빌드 없이 공식 이미지 사용 |
+**이렇게 나오면 성공** — 실습 12 컨테이너가 남아 있었다면 지운 이름이 한 줄씩 나옵니다.
+
+```
+api
+db
+todo-net
+```
+
+- 실습 12 확인 문제 2에서 이미 지웠다면 `docker rm -f`는 아무것도 출력하지 않고, `network rm`은 `Error response from daemon: network todo-net not found`가 나옵니다. 이미 정리된 것이라 정상입니다
+- 컨테이너 둘에 명령 하나, 네트워크에 명령 하나 — 무엇을 만들었는지 내가 기억해서 지워야 합니다. 6단계에서 Compose는 이 일을 `docker compose down` 한 줄로 합니다
 
 ## 2단계. compose.yaml 쓰기
 
@@ -165,9 +172,19 @@ docker compose down -v
 **이렇게 나오면 성공**: 첫 `curl`은 `learn compose`가 남아 있고, `down -v` 뒤의 `curl`은 `[]`.
 
 - 실습 12에서 명령 여섯 줄(`network create`, `run` 두 번, 긴 `-e` 옵션들)로 하던 일을 파일 하나와 `up` 한 줄로 합니다
+- 정리도 비교해 봅니다. 1단계에서는 `docker rm -f api db`와 `docker network rm todo-net`을 따로 쳤고, `down`은 한 줄로 web·api·db 컨테이너와 네트워크 `todo_default`까지 지웁니다(`✔ Container todo-web-1 Removed` … `✔ Network todo_default Removed`). `down`이 10초쯤 걸리는 것은 api가 멈추기를 기다리기 때문이고 정상입니다
+
+| | docker 명령 (실습 12 · 1단계) | Compose (실습 13) |
+|---|---|---|
+| 띄우기 | `network create` · `build` · `run` 두 번(web까지면 더) | `docker compose up -d --build` 한 줄 |
+| 네트워크 | 직접 만들고 `run`마다 `--network` | 자동(`todo_default`) |
+| 정리 | `rm -f` + `network rm` 따로, 이미 지웠으면 오류 | `docker compose down` 한 줄(`-v`면 볼륨까지) |
+| 다음에 다시 띄우기 | 명령을 기억해 다시 입력 | `compose.yaml`이 남아 있어 `up -d` |
+
 - `up -d` 바로 뒤의 `curl`이 실패하면 DB·API가 아직 시작 중일 수 있습니다. 몇 초 뒤 같은 `curl`을 다시 합니다
 
 ## 끝났는지 확인
+- ☐ 1단계에서 `api`·`db`·`todo-net`을 명령 두 개로 지웠다(이미 지웠다면 `not found`를 봤다)
 - ☐ `docker compose ps`에 서비스 3개가 `Up`이었다
 - ☐ `curl localhost:8088/api/todos`로 넣은 할 일이 `down` → `up` 뒤에도 남아 있었다
 - ☐ `down -v` 뒤에는 `[]`였다

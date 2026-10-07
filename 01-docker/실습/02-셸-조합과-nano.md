@@ -2,7 +2,7 @@
 
 # 실습 2. 셸 조합과 nano
 
-**무엇을 하나요**: 명령을 이어 붙이고(`|`), 결과를 파일로 보내고(`>`, `>>`), 환경변수와 종료 코드를 확인합니다. 터미널 안에서 편집기 nano로 파일을 고칩니다. Docker 실습 내내 쓰는 기본기입니다. (교안 02장)
+**무엇을 하나요**: 서버 VM에는 화면이 없어 메모장·마우스·Ctrl+F 없이 터미널로만 고치고 찾아야 합니다. 명령을 이어 붙이고(`|`), 결과를 파일로 보내고(`>`, `>>`), 환경변수와 종료 코드를 확인합니다. 터미널 안에서 편집기 nano로 파일을 고칩니다. Docker 실습 내내 쓰는 기본기입니다. (교안 02장)
 
 **필요한 것**: 실습 1에서 만든 `~/basics` 폴더. (셸 = 지금 명령을 받아 실행하는 프로그램. 터미널 안에서 돌아갑니다)
 
@@ -12,6 +12,7 @@
 
 ```bash
 cd ~/basics
+cat /etc/os-release                  # 13줄 전부 — 필요한 것은 한두 줄
 cat /etc/os-release | grep CODENAME  # CODENAME이 든 줄만
 # VERSION_CODENAME=noble
 # UBUNTU_CODENAME=noble
@@ -35,6 +36,7 @@ cat note.txt                 # new 한 줄만 남음
 | `>> 파일` | 출력을 파일 **끝에 이어** 씀 |
 
 **이렇게 나오면 성공**
+- `cat /etc/os-release` → `PRETTY_NAME="Ubuntu 24.04.5 LTS"`부터 13줄. 화면이 없는 VM에서는 이 중 필요한 줄을 눈으로 찾는 대신 `grep`으로 거릅니다
 - `grep CODENAME` → `VERSION_CODENAME=noble`, `UBUNTU_CODENAME=noble` 두 줄
 - 첫 `cat note.txt` → `first`, `second` 두 줄
 - 마지막 `cat note.txt` → `new` 한 줄(`>`가 앞 내용을 지웠기 때문)
@@ -118,6 +120,7 @@ nano memo.txt                # 없는 파일이면 새로 만듦
 **vi가 열렸을 때 빠져나오기** — `git commit`처럼 편집기를 여는 명령이 nano 대신 vi(vim)를 열 때가 있습니다. vi는 nano와 조작이 전혀 다릅니다. `vi memo.txt`로 한 번 들어갔다가 **Esc** → `:q!` → **Enter**로 나와 봅니다(저장하지 않고 나감. 저장하고 나가려면 `:wq`).
 
 ## 끝났는지 확인
+- ☐ `cat /etc/os-release`(13줄)와 `cat /etc/os-release | grep CODENAME`(2줄)의 차이를 봤다
 - ☐ `cat note.txt`에 `new` 한 줄이 보인다
 - ☐ `ls nothing.txt` 바로 뒤 `echo $?`에 `2`가 나왔다
 - ☐ `cat memo.txt`에 nano로 쓴 두 줄이 보인다
