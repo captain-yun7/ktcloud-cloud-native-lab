@@ -16,7 +16,7 @@ db가 **빈 저장 공간으로 새로 만들어질 때**(1단계·4단계)는 �
 
 ```bash
 kubectl rollout status deployment/db          # 새 db 파드가 준비될 때까지 기다림
-kubectl rollout restart deployment/api        # api를 새로 시작 (새 DB에 다시 연결하고 표를 만듦)
+kubectl rollout restart deployment/api        # api를 새로 시작 (새 DB에 다시 연결하고 테이블을 만듦)
 kubectl rollout status deployment/api         # api가 바뀔 때까지 기다림
 kubectl logs deploy/api                       # 마지막 줄이 todo api listening on port 3000 이면 준비 끝
 ```
@@ -38,7 +38,7 @@ kubectl exec deploy/db -- psql -U todo -c 'select * from todos'
 
 **이 명령은**
 - `kubectl delete pod -l app=db` = db 파드를 지움 → Deployment가 새 db 파드를 만듦(실습 4)
-- `kubectl exec deploy/db -- psql -U todo -c '…'` = db 파드 안에서 postgres 명령 도구 `psql`로 할 일 표(`todos`)를 직접 조회
+- `kubectl exec deploy/db -- psql -U todo -c '…'` = db 파드 안에서 postgres 명령 도구 `psql`로 할 일 테이블(`todos` — DB 안에서 할 일을 한 줄씩 담아 두는 곳. 문서의 표가 아님)을 직접 조회
 
 **이렇게 나오면 성공** — 넣은 할 일이 보였다가, 새 db에서는 **`keep me`가 없음**. 마지막 줄은 둘 중 하나입니다.
 
@@ -62,8 +62,8 @@ command terminated with exit code 1
 ```
 
 - 데이터는 db **컨테이너 안**의 폴더(`/var/lib/postgresql/data`)에 있었습니다. 파드가 새로 만들어지면 컨테이너도 새것이라 그 안의 파일은 사라집니다(Docker 실습 10과 같음)
-- `relation "todos" does not exist` = `todos`라는 표가 없다. 할 일뿐 아니라 api가 만든 **표까지** 사라진 것입니다
-- `(0 rows)` = 표는 있는데 비어 있음. api가 다시 시작하면서(예: 2단계의 `rollout restart`를 먼저 한 경우) 새 DB에 **빈 표**를 다시 만든 경우입니다. api는 시작할 때만 표를 만들고, DB가 바뀌어도 스스로 꺼지지는 않습니다(2026-10-04 앱 수정 뒤 RESTARTS 0). 어느 쪽이든 넣은 할 일은 사라졌습니다
+- `relation "todos" does not exist` = `todos`라는 테이블이 없다. 할 일뿐 아니라 api가 만든 **테이블까지** 사라진 것입니다
+- `(0 rows)` = 테이블은 있는데 비어 있음. api가 다시 시작하면서(예: 2단계의 `rollout restart`를 먼저 한 경우) 새 DB에 **빈 테이블**을 다시 만든 경우입니다. api는 시작할 때만 테이블을 만들고, DB가 바뀌어도 스스로 꺼지지는 않습니다(2026-10-04 앱 수정 뒤 RESTARTS 0). 어느 쪽이든 넣은 할 일은 사라졌습니다
 
 ## 2단계. api도 다시 시작해야 하는 이유
 
@@ -77,7 +77,7 @@ curl localhost:8088/api/todos
 
 **이렇게 나오면 성공**: 마지막 `curl`에 `[]`(빈 목록). `502 Bad Gateway`면 api가 아직 준비 중이니 몇 초 뒤 다시.
 
-- todo api는 **시작할 때 한 번** DB에 연결하고 표를 만듭니다(`lab/docker/todo/api/app.js`). DB가 **빈** 새것으로 바뀌면 표가 없으니, api를 다시 시작해야 새 DB에 표를 만듭니다. 그래서 db가 비어서 새로 생길 때 위의 네 줄을 씁니다
+- todo api는 **시작할 때 한 번** DB에 연결하고 테이블을 만듭니다(`lab/docker/todo/api/app.js`). DB가 **빈** 새것으로 바뀌면 테이블이 없으니, api를 다시 시작해야 새 DB에 테이블을 만듭니다. 그래서 db가 비어서 새로 생길 때 위의 네 줄을 씁니다
 - `kubectl logs deploy/api`에 `database connection lost: …` 줄이 보일 수 있습니다. db 파드가 바뀌며 api가 붙잡고 있던 연결이 끊겼다는 기록이고, api는 꺼지지 않고 다음 요청 때 새로 연결합니다(정상)
 - `kubectl rollout restart` = 파일을 바꾸지 않고 파드만 새로 만들어 다시 시작(롤링 업데이트와 같은 방식)
 
@@ -238,7 +238,7 @@ curl localhost:8088/api/todos
 |---|---|---|
 | PVC가 계속 `Pending` | 이 PVC를 쓰는 파드가 아직 없음(정상), 또는 Deployment 쪽 `claimName` 오타 | `kubectl get pods -l app=db`가 `Running`인지, `claimName: db-data`인지 |
 | db 파드가 `Pending`, Events에 `persistentvolumeclaim "…" not found` | `claimName`과 PVC 이름이 다름 | 둘을 `db-data`로 맞춤 |
-| `curl`이 `500`·`Internal Server Error` (db를 빈 저장 공간으로 바꾼 뒤) | api를 다시 시작하지 않아 새 DB에 표가 없음 | `kubectl rollout restart deployment/api` |
+| `curl`이 `500`·`Internal Server Error` (db를 빈 저장 공간으로 바꾼 뒤) | api를 다시 시작하지 않아 새 DB에 테이블이 없음 | `kubectl rollout restart deployment/api` |
 | `curl`이 `502 Bad Gateway` | api가 막 다시 시작하는 중 | 몇 초 뒤 다시. `kubectl logs deploy/api`의 마지막 줄이 `todo api listening on port 3000`인지 |
 
 </details>
