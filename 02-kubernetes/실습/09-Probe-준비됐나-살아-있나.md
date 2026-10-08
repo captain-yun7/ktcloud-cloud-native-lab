@@ -174,10 +174,10 @@ nano stuck-live.yaml
 
 ```bash
 kubectl apply -f stuck.yaml -f stuck-live.yaml
-kubectl get pods stuck stuck-live -w
+kubectl get pods -w
 ```
 
-2분쯤 지켜본 뒤 Ctrl+C.
+`stuck`·`stuck-live` 두 줄을 2분쯤 지켜본 뒤 Ctrl+C. (`-w`는 이름을 하나만 주거나 안 줄 때만 됩니다. `kubectl get pods stuck stuck-live -w`는 `watch is only supported on individual resources …` 오류)
 
 **이렇게 나오면 성공**
 
