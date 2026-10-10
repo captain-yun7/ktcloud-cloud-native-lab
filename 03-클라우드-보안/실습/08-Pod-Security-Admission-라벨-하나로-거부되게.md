@@ -81,6 +81,82 @@ pod "web" deleted from psa namespace
 
 - `securityContext`가 하나도 없는 파드가 **아무 경고 없이** 만들어져 돕니다(`STATUS`가 `ContainerCreating`이면 몇 초 뒤 다시 `get pods`). 라벨이 없는 네임스페이스는 검사를 하지 않습니다
 
+라벨이 없으면 훨씬 위험한 파드도 그냥 만들어집니다. **특권 모드**(`privileged: true`)에 **노드의 `/` 전체**를 붙인 파드를 만들어 봅니다.
+
+```bash
+nano priv.yaml
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: priv
+spec:
+  containers:
+  - name: c
+    image: busybox:1.37
+    command: ["sleep", "infinity"]
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - name: host
+      mountPath: /host
+  volumes:
+  - name: host
+    hostPath:
+      path: /
+```
+
+| 줄 | 뜻 |
+|---|---|
+| `privileged: true` | 컨테이너에 노드와 같은 권한을 줌(리눅스 특권 전부, 장치 접근) |
+| `hostPath: path: /` · `mountPath: /host` | **노드의 `/` 전체**를 컨테이너 안 `/host`에 붙임 |
+| `metadata`에 `namespace` 없음 | `kubectl -n psa`로 넣을 네임스페이스를 정함(나에서 같은 파일을 다시 씀) |
+
+```bash
+kubectl -n psa apply -f priv.yaml
+kubectl -n psa wait --for=condition=Ready pod/priv --timeout=60s
+kubectl -n psa exec priv -- ls /host
+kubectl -n psa exec priv -- touch /host/tmp/from-pod
+N=$(kubectl -n psa get pod priv -o jsonpath='{.spec.nodeName}'); echo $N
+docker exec $N ls -l /tmp/from-pod
+kubectl -n psa exec priv -- rm /host/tmp/from-pod
+kubectl -n psa delete pod priv --now
+```
+
+**이 명령은**
+- `ls /host` = 파드 안에서 **노드의** `/`를 봄
+- `touch /host/tmp/from-pod` = 파드 안에서 노드의 `/tmp`에 빈 파일 하나를 만듦
+- `N=$(… -o jsonpath='{.spec.nodeName}')` = 이 파드가 뜬 노드 이름을 변수 `N`에 담음. kind의 노드는 VM의 도커 컨테이너(`lab-control-plane` 등)라서
+- `docker exec $N ls -l /tmp/from-pod` = **노드 쪽에서** 그 파일이 보이는지 확인
+- 마지막 두 줄 = 만든 파일과 파드를 지움
+
+**이렇게 나오면 성공** (노드 이름은 클러스터에 따라 `lab-control-plane` 등)
+
+```
+pod/priv created
+pod/priv condition met
+LICENSES
+bin
+boot
+dev
+etc
+home
+kind
+lib
+…
+tmp
+usr
+var
+lab-control-plane
+-rw-r--r-- 1 root root 0 Oct 10 23:47 /tmp/from-pod
+pod "priv" deleted from psa namespace
+```
+
+- `ls /host`에 보이는 것은 컨테이너가 아니라 **노드의 파일**입니다(`kind` 폴더가 kind 노드라는 표시). 파드 안에서 만든 `from-pod`가 노드에 root 소유로 생겼습니다
+- 즉 이런 파드를 하나 만들 수 있는 사람은 **그 노드의 모든 파일을 root로 읽고 바꿀 수 있습니다**. 노드 위의 다른 파드(todo의 db 데이터 포함)까지 손이 닿습니다. 그런데 라벨 없는 네임스페이스는 아무것도 묻지 않고 만들어 줍니다
+
 ### 나. enforce 라벨을 붙이고 다시
 
 ```bash
@@ -98,6 +174,20 @@ Error from server (Forbidden): pods "web" is forbidden: violates PodSecurity "re
 ```
 
 **왜 그런가**: 거부 이유 4가지 = 권한 상승 허용, capability 그대로, root 실행 가능, seccomp 없음. 2단계의 경고와 같은 내용이지만 enforce라서 **파드가 만들어지지 않습니다.**
+
+가에서 노드의 `/`까지 만졌던 특권 파드도 다시 만들어 봅니다.
+
+```bash
+kubectl -n psa apply -f priv.yaml
+```
+
+**이렇게 나오면 성공** — 이유가 6가지로 늘어납니다.
+
+```
+Error from server (Forbidden): error when creating "priv.yaml": pods "priv" is forbidden: violates PodSecurity "restricted:latest": privileged (container "c" must not set securityContext.privileged=true), allowPrivilegeEscalation != false (container "c" must set securityContext.allowPrivilegeEscalation=false), unrestricted capabilities (container "c" must set securityContext.capabilities.drop=["ALL"]), restricted volume types (volume "host" uses restricted volume type "hostPath"), runAsNonRoot != true (pod or container "c" must set securityContext.runAsNonRoot=true), seccompProfile (pod or container "c" must set securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")
+```
+
+- 맨 앞 `privileged (… must not set securityContext.privileged=true)`와 중간 `restricted volume types (volume "host" uses restricted volume type "hostPath")`가 가에서 노드를 만지게 해 준 두 설정입니다. 라벨 한 줄로 이 파드는 **만들어지지도 않습니다**
 
 | 같은 명령 `kubectl -n psa run web --image=todo-web:v1` | 라벨 없음 (가) | `enforce=restricted` (나) |
 |---|---|---|
@@ -151,7 +241,9 @@ LAST SEEN   TYPE      REASON         OBJECT                    MESSAGE
 - ☐ todo dry-run 경고에 db(와 web 1개)가 나오고 api는 없음
 - ☐ warn 라벨 뒤 web 재시작에만 `Warning: would violate …`
 - ☐ 라벨 없는 psa에서는 같은 `kubectl run`이 `created`·`Running`
+- ☐ 라벨 없는 psa에서 특권 파드 `priv`가 만들어지고, 노드에 `/tmp/from-pod`가 보임
 - ☐ enforce 라벨 뒤 psa에서 `kubectl run`이 `forbidden`
+- ☐ enforce 라벨 뒤 `priv.yaml`이 `privileged`·`hostPath` 이유로 `Forbidden`
 - ☐ psa의 Deployment가 `0/1`, 이벤트에 `FailedCreate`
 
 ## 정리

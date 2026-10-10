@@ -2,11 +2,11 @@
 
 # 실습 1. 빈틈 세 개 직접 보기 — root · 열린 네트워크 · 토큰
 
-**무엇을 하나요**: Kubernetes 과목에서 만든 todo를 **`securityContext`·NetworkPolicy 같은 설정 없이** 네임스페이스 `todo`에 띄우고, 쿠버네티스 기본값 그대로일 때 생기는 빈틈 세 개를 직접 확인합니다. ① 앱이 root로 돈다 ② 다른 네임스페이스에서도 db에 닿는다 ③ 파드 안에 API 서버용 토큰이 들어 있다. 이 실습은 **찾기만** 합니다. 막는 방법은 실습 3부터 하나씩 배웁니다. (교안 02장)
+**무엇을 하나요**: Kubernetes 과목에서 만든 todo를 **`securityContext`·NetworkPolicy 같은 설정 없이** 네임스페이스 `todo`에 띄우고, 쿠버네티스 기본값 그대로일 때 생기는 빈틈 세 개를 직접 확인합니다. ① 앱이 root로 돈다 ② 다른 네임스페이스에서도 db에 닿는다 ③ 파드 안에 API 서버용 토큰이 들어 있다. 마지막 5단계에서는 빈틈 둘(환경변수에 보이는 비밀번호, 열린 네트워크)을 이어 **다른 네임스페이스에서 할 일을 읽고 지워** 봅니다. 이 실습은 고치지 않고 **보기만** 합니다. 막는 방법은 실습 3부터 하나씩 배웁니다. (교안 02장)
 
 **필요한 것**: [시작하기 전에](./00-시작하기-전에.md#시작하기-전에) 3·4(도구, todo 이미지).
 
-> **바로 가기** · [1. todo를 todo 네임스페이스에 띄우기](#1단계-todo를-todo-네임스페이스에-띄우기) · [2. 빈틈 1 — 누구 권한으로 도나](#2단계-빈틈-1--누구-권한으로-도나) · [3. 빈틈 2 — 다른 네임스페이스에서 db에 닿나](#3단계-빈틈-2--다른-네임스페이스에서-db에-닿나) · [4. 빈틈 3 — 파드 안의 토큰](#4단계-빈틈-3--파드-안의-토큰) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
+> **바로 가기** · [1. todo를 todo 네임스페이스에 띄우기](#1단계-todo를-todo-네임스페이스에-띄우기) · [2. 빈틈 1 — 누구 권한으로 도나](#2단계-빈틈-1--누구-권한으로-도나) · [3. 빈틈 2 — 다른 네임스페이스에서 db에 닿나](#3단계-빈틈-2--다른-네임스페이스에서-db에-닿나) · [4. 빈틈 3 — 파드 안의 토큰](#4단계-빈틈-3--파드-안의-토큰) · [5. 빈틈 둘을 이으면](#5단계-빈틈-둘을-이으면--다른-네임스페이스에서-할-일-읽고-지우기) · [끝났는지 확인](#끝났는지-확인) · [정리](#정리) · [확인 문제](#확인-문제)
 
 ## 1단계. todo를 todo 네임스페이스에 띄우기
 
@@ -177,12 +177,96 @@ no
 
 **왜 확인하나**: `token`은 이 파드가 쿠버네티스 API 서버에 "나는 todo의 default 계정"이라고 증명하는 열쇠입니다. todo api는 API 서버를 쓰지 않으니 **필요 없는 열쇠**가 들어 있는 셈입니다. 지금은 default 계정에 권한이 거의 없어(`no`) 당장 위험하지 않지만, 누군가 이 계정에 권한을 주면 모든 파드의 토큰이 그 권한을 갖게 됩니다. 그래서 쓰지 않는 토큰은 끄고(실습 5), 권한은 최소로 줍니다(실습 6).
 
+## 5단계. 빈틈 둘을 이으면 — 다른 네임스페이스에서 할 일 읽고 지우기
+
+빈틈 하나하나는 "열려 있다"로 끝나지만, 둘을 이으면 실제 피해가 됩니다. 할 일을 두 개 넣어 두고, todo와 상관없는 `other` 네임스페이스에서 그 할 일을 읽고 지워 봅니다. 해킹 도구는 쓰지 않습니다. `kubectl`과 postgres에 딸린 `psql`만 씁니다.
+
+```bash
+kubectl -n todo exec deploy/web -- wget -qO- -T 5 --header=Content-Type:application/json --post-data='{"title":"월급날 카드값 정리"}' http://api:3000/api/todos; echo
+kubectl -n todo exec deploy/web -- wget -qO- -T 5 --header=Content-Type:application/json --post-data='{"title":"인사팀 면담 준비"}' http://api:3000/api/todos; echo
+kubectl -n todo exec deploy/api -- env | grep DB_PASSWORD
+```
+
+**이 명령은**
+- 첫 두 줄 = web 파드 안에서 api에 할 일을 하나씩 추가(`--post-data` = 보낼 내용, 화면에서 할 일을 입력하는 것과 같음)
+- 셋째 줄 = api 파드의 환경변수 중 `DB_PASSWORD`만 봄. api는 db 비밀번호를 환경변수로 받습니다(`todo.yaml`의 `secretKeyRef`)
+
+**이렇게 나오면 성공**
+
+```
+{"id":1,"title":"월급날 카드값 정리"}
+{"id":2,"title":"인사팀 면담 준비"}
+DB_PASSWORD=todo-pass
+```
+
+- api 컨테이너 안에 들어올 수 있는 사람이면 누구나 `env` 한 번으로 db 비밀번호를 봅니다(빈틈: 비밀번호가 환경변수에 그대로)
+
+이제 `other`에 postgres 접속 프로그램(`psql`)이 든 파드 `x`를 띄우고, 방금 본 비밀번호로 todo의 db에 접속합니다.
+
+```bash
+kubectl -n other run x --image=postgres:17-alpine --restart=Never --env=PGPASSWORD=todo-pass -- sleep 600
+kubectl -n other wait --for=condition=Ready pod/x --timeout=120s
+kubectl -n other exec x -- psql -h db.todo -U todo -d todo -c "SELECT * FROM todos;"
+```
+
+**이 명령은**
+- `run x --image=postgres:17-alpine` = db가 쓰는 것과 같은 postgres 이미지로 파드를 만듦. 이 이미지에 `psql`이 들어 있음. `--restart=Never` = 한 번만 도는 파드, `sleep 600` = 10분 동안 켜 둠
+- `--env=PGPASSWORD=todo-pass` = psql이 쓸 비밀번호
+- `psql -h db.todo -U todo -d todo -c "…"` = todo 네임스페이스의 db(`db.todo`)에 사용자 `todo`, 데이터베이스 `todo`로 접속해 SQL 한 줄 실행. `SELECT * FROM todos;` = todos 테이블의 모든 줄 보기
+
+**이렇게 나오면 성공** — 다른 네임스페이스에서 할 일이 그대로 보입니다.
+
+```
+pod/x created
+pod/x condition met
+ id |       title        
+----+--------------------
+  1 | 월급날 카드값 정리
+  2 | 인사팀 면담 준비
+(2 rows)
+```
+
+같은 자리에서 지워 봅니다.
+
+```bash
+kubectl -n other exec x -- psql -h db.todo -U todo -d todo -c "TRUNCATE todos RESTART IDENTITY;"
+kubectl -n todo exec deploy/web -- wget -qO- -T 5 http://api:3000/api/todos; echo
+kubectl -n other delete pod x --now
+```
+
+**이 명령은**: `TRUNCATE todos RESTART IDENTITY;` = todos 테이블의 모든 줄을 지우고 번호(`id`)도 1부터 다시 시작(다음 실습에서 새로 넣는 할 일이 `id` 1이 되도록). 둘째 줄 = 앱 쪽(web → api)에서 목록 다시 보기. 셋째 줄 = 파드 `x` 지우기(파드 `t`와 네임스페이스 `other`는 실습 7·미션 2에서 쓰니 **지우지 않음**).
+
+**이렇게 나오면 성공**
+
+```
+TRUNCATE TABLE
+[]
+pod "x" deleted from other namespace
+```
+
+**왜 이렇게 되나**
+- db는 api만 쓰는데, NetworkPolicy가 없어 `other`의 파드도 `db.todo` 5432에 닿습니다(3단계의 `열림`)
+- postgres는 비밀번호만 맞으면 어디서 온 연결인지 묻지 않습니다. 비밀번호는 api 환경변수에 그대로 보였습니다
+- 둘이 이어져 **todo와 상관없는 네임스페이스에서 할 일을 읽고 지울 수 있었습니다**. 막는 곳은 두 군데입니다 — 비밀번호를 파일로 넣고 읽을 사람을 줄이기(실습 5·6), db에는 api만 들어오게 하기(실습 7). 실습 7을 마치면 같은 `psql` 명령이 `timeout expired`로 막힙니다
+
+<details><summary><b>이렇게 나오면?</b> — 자주 나는 오류와 해결 (눌러서 펼치기)</summary>
+
+| 화면 | 원인 | 해결 |
+|---|---|---|
+| `Error from server (AlreadyExists): pods "x" already exists` | 전에 만든 `x`가 남음 | `kubectl -n other delete pod x --now` 후 다시 |
+| `error: timed out waiting for the condition on pods/x` | postgres 이미지를 받는 중 | `kubectl -n other get pod x`가 `Running`이 되면 `psql` 줄부터 다시 |
+| `psql: error: … password authentication failed for user "todo"` | `PGPASSWORD` 값 오타 | `x`를 지우고 `--env=PGPASSWORD=todo-pass`로 다시 |
+| `SELECT` 결과가 `(0 rows)` | 할 일을 안 넣었거나 이미 지움 | 첫 두 줄(`--post-data`)을 다시 |
+
+</details>
+
 ## 끝났는지 확인
 
 - ☐ todo의 api·db·web이 `1/1 Running`, `wget …/api/todos`가 `[]`
 - ☐ api의 `ps`에서 `node app.js`의 USER가 `root`
 - ☐ other의 `t`에서 `db.todo 5432`가 `열림`
 - ☐ api 파드 안에 `token`이 보이고, `can-i list secrets`가 `no`
+- ☐ other의 파드 `x`에서 `psql`로 할 일 2줄이 보이고, `TRUNCATE TABLE` 뒤 앱 목록이 `[]`
 
 ## 정리
 
