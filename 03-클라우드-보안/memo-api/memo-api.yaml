@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memo-api
+  namespace: memo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memo-api
+  template:
+    metadata:
+      labels:
+        app: memo-api
+    spec:
+      containers:
+      - name: api
+        image: memo-api:bad
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: API_KEY
+          value: memo-live-7f3a9c2e
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memo-api
+  namespace: memo
+spec:
+  selector:
+    app: memo-api
+  ports:
+  - port: 80
+    targetPort: 8000

@@ -1,0 +1,162 @@
+# 클라우드 보안 실습용 todo 앱 — Kubernetes 실습 7에서 만든 web · api · db를 네임스페이스 todo에 한 번에 띄움
+# 이미지 todo-api:v1 · todo-web:v1은 Kubernetes 실습 7에서 빌드하고 kind load 한 것 (없으면 실습 문서 "시작하기 전에" 4)
+# 보안 설정은 일부러 하나도 넣지 않음 — 실습 1에서 빈틈을 찾고, 실습 3~9에서 하나씩 막는다
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: todo
+---
+# DB 비밀번호. 연습용이라 파일에 적었음 — 실제로는 저장소에 올리지 않는다(실습 5)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: todo-secret
+  namespace: todo
+stringData:
+  DB_PASSWORD: todo-pass
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-config
+  namespace: todo
+data:
+  DB_HOST: db
+  DB_USER: todo
+  DB_NAME: todo
+---
+# db 데이터를 담을 저장 공간 (Kubernetes 실습 8) — db 파드가 다시 생겨도 할 일이 남음
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-data
+  namespace: todo
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: todo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:17-alpine
+        env:
+        - name: POSTGRES_USER
+          value: todo
+        - name: POSTGRES_DB
+          value: todo
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: todo-secret
+              key: DB_PASSWORD
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: db-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: todo
+spec:
+  selector:
+    app: db
+  ports:
+  - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: todo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: todo-api:v1
+        envFrom:
+        - configMapRef:
+            name: todo-config
+        env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: todo-secret
+              key: DB_PASSWORD
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: todo
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 3000
+---
+# web(nginx)은 시작할 때 api를 이름으로 찾으므로 api Service 뒤에 둔다
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: todo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: todo-web:v1
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: todo
+spec:
+  selector:
+    app: web
+  ports:
+  - port: 80
