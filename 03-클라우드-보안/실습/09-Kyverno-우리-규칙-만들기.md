@@ -227,3 +227,4 @@ kubectl delete validatingpolicy disallow-latest-tag
        image: busybox:1.37
        command: ["sleep", "infinity"]
    ```
+3. 이 정책은 이미지 이름에 `:`가 있으면 "태그를 적었다"고 봅니다. `kubectl -n todo run portonly --image=localhost:5001/todo-api --dry-run=server`는 어떻게 되나요? 이 이미지 이름에 태그가 있나요? 왜 이런 결과가 나올까요? (`--dry-run=server`는 API 서버까지 보내 검사만 받고 실제로 만들지는 않는 옵션입니다)
