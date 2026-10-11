@@ -160,10 +160,18 @@ kubectl -n todo get pod -l app=api -o jsonpath='{.items[0].spec.serviceAccountNa
 kubectl auth can-i list secrets -n todo --as=system:serviceaccount:todo:default
 ```
 
-**이 명령은**
-- 첫 줄 = api 파드 안의 서비스 계정 폴더를 봄. **서비스 계정** = 사람이 아니라 파드(프로그램)가 쓰는 계정. 따로 정하지 않으면 네임스페이스의 `default` 계정 토큰이 자동으로 들어갑니다
-- 둘째 줄 = 이 파드가 어느 서비스 계정을 쓰는지(`-o jsonpath` = 출력에서 원하는 부분만, `-l app=api` = 라벨이 `app=api`인 파드)
-- `kubectl auth can-i 동사 리소스 -n 네임스페이스 --as=계정` = 그 계정이 그 일을 할 수 있는지 클러스터에 물음(yes/no). 실습 6에서 다시 씁니다
+**먼저 배경 — 파드도 쿠버네티스에 "로그인"한다**
+- 여러분은 `kubectl`로 쿠버네티스 API 서버에 명령을 보냅니다. 이때 `~/.kube/config` 안의 인증서로 "나는 관리자"라고 증명합니다
+- 파드 안의 프로그램도 API 서버에 말을 걸 수 있습니다. 예를 들어 "다른 파드 목록을 보여 줘"라고 요청하는 모니터링 프로그램이 그렇습니다. 이때 파드가 쓰는 계정이 **서비스 계정**(ServiceAccount)이고, 증명서가 **토큰**입니다
+- 쿠버네티스는 파드를 만들 때 따로 말하지 않아도 **그 네임스페이스의 `default` 서비스 계정 토큰을 파드 안 파일로 넣어 줍니다.** 이 단계는 그 파일이 정말 있는지, 어떤 계정인지, 그 계정으로 무엇을 할 수 있는지 세 가지를 봅니다
+
+**이 명령은** (한 줄씩)
+
+| 줄 | 명령을 나눠 보면 | 하는 일 |
+|---|---|---|
+| 1 | `kubectl -n todo exec deploy/api --` = todo의 api 파드 안에서 실행 · `ls /var/run/secrets/kubernetes.io/serviceaccount` = 그 폴더의 파일 목록 | 토큰이 들어 있는 폴더를 열어 봄. 쿠버네티스가 토큰을 넣는 자리가 이 경로로 정해져 있음 |
+| 2 | `get pod -l app=api` = 라벨이 `app=api`인 파드 · `-o jsonpath='{.items[0].spec.serviceAccountName}'` = 그 파드 설명(YAML) 중 `spec.serviceAccountName` 칸 하나만 꺼냄 · `; echo` = 줄 바꿈만 추가 | 이 파드가 **어느 서비스 계정**으로 로그인하는지 확인. 우리 `todo.yaml`에는 계정을 적지 않았으니 `default`가 나와야 함 |
+| 3 | `auth can-i list secrets` = "Secret 목록을 볼 수 있나?" · `-n todo` = todo 네임스페이스에서 · `--as=system:serviceaccount:todo:default` = **todo의 default 서비스 계정인 척** 물어봄 | 그 토큰을 누가 가져가면 Secret(비밀번호가 든 곳)을 볼 수 있는지 미리 확인. 답은 `yes`/`no` 한 단어. `system:serviceaccount:<네임스페이스>:<계정>`은 서비스 계정의 정식 이름 |
 
 **이렇게 나오면 성공**
 
@@ -175,7 +183,14 @@ default
 no
 ```
 
-**왜 확인하나**: `token`은 이 파드가 쿠버네티스 API 서버에 "나는 todo의 default 계정"이라고 증명하는 열쇠입니다. todo api는 API 서버를 쓰지 않으니 **필요 없는 열쇠**가 들어 있는 셈입니다. 지금은 default 계정에 권한이 거의 없어(`no`) 당장 위험하지 않지만, 누군가 이 계정에 권한을 주면 모든 파드의 토큰이 그 권한을 갖게 됩니다. 그래서 쓰지 않는 토큰은 끄고(실습 5), 권한은 최소로 줍니다(실습 6).
+**출력 한 줄씩 읽기**
+- `ca.crt` — API 서버가 진짜인지 확인하는 인증서(파드가 가짜 서버에 속지 않게)
+- `namespace` — 이 파드가 속한 네임스페이스 이름(`todo`)이 적힌 파일
+- `token` — **열쇠.** 이 글자를 API 서버에 보이면 "todo의 default 계정"으로 인정받음
+- `default` — 2번 줄 결과. api 파드는 default 계정을 씀
+- `no` — 3번 줄 결과. 지금 default 계정은 Secret 목록을 볼 수 없음
+
+**왜 확인하나**: todo의 api는 db에만 연결하고 API 서버에는 말을 걸지 않습니다. 그런데도 `token`이라는 **쓰지 않는 열쇠**를 들고 있습니다. 지금은 그 열쇠로 할 수 있는 게 거의 없어(`no`) 당장 위험하지 않습니다. 하지만 나중에 누군가 "편하게 쓰자"며 default 계정에 권한을 주면(예: 실습 6 1단계처럼 넓은 권한), **todo의 모든 파드가 가진 토큰이 그 순간 같은 권한을 갖게 됩니다.** api에 들어온 누군가가 이 파일을 읽어 가면 그 권한으로 클러스터에 접속할 수 있습니다. 그래서 쓰지 않는 토큰은 아예 넣지 않고(실습 5 4단계 `automountServiceAccountToken: false`), 권한은 필요한 것만 줍니다(실습 6).
 
 ## 5단계. 빈틈 둘을 이으면 — 다른 네임스페이스에서 할 일 읽고 지우기
 
