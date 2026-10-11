@@ -281,7 +281,7 @@ trivy image --quiet --severity CRITICAL --exit-code 1 todo-api:v1 > /dev/null &&
 
 ## 정리
 
-지울 것은 없습니다. 내려받은 `node:24-alpine`·`node:22-slim`은 지워도 됩니다(`docker rmi node:24-alpine node:22-slim`).
+지울 것은 없습니다. 4단계의 `node:24-alpine`·`node:22-slim`은 trivy가 레지스트리에서 **읽기만** 하고 VM의 도커나 클러스터에 저장하지 않으므로(`docker images`에 안 나옴) 따로 지울 이미지가 없습니다.
 
 ## 확인 문제
 
