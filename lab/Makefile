@@ -8,11 +8,12 @@ GATEWAY_API := v1.5.1
 KPS_CHART := 91.6.0
 LOKI_CHART := 7.3.0
 ALLOY_CHART := 1.13.0
+TEMPO_CHART := 3.2.0
 EG_VERSION := 1.9.1
 KYVERNO_IMAGES := $(foreach i,kyverno kyvernopre background-controller cleanup-controller reports-controller,reg.kyverno.io/kyverno/$(i):v1.19.1) ghcr.io/kyverno/readiness-checker:v1.19.1
 METRICS_URL := https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.9.0/components.yaml
 
-.PHONY: up down reset status doctor tools ingress kyverno kyverno-images jenkins jenkins-image jenkins-down argocd gateway-api monitoring logging
+.PHONY: up down reset status doctor tools ingress kyverno kyverno-images jenkins jenkins-image jenkins-down argocd gateway-api monitoring logging tracing
 
 tools:            ## 고정 버전 도구 설치 (.mise.toml)
 	@./scripts/install-tools.sh
@@ -56,6 +57,11 @@ logging:          ## Loki + Alloy (모니터링 과목 로그 실습) — Grafan
 	@helm upgrade --install alloy alloy --repo https://grafana.github.io/helm-charts --version $(ALLOY_CHART) \
 	  -n monitoring -f monitoring/alloy-values.yaml --wait --timeout 5m >/dev/null
 	@kubectl -n monitoring get pods | grep -E "loki|alloy"
+
+tracing:          ## Tempo (모니터링 과목 트레이스 실습) — Istio 사이드카의 스팬을 OTLP 4317로 받음, Grafana의 Tempo 데이터 소스로 조회
+	@helm upgrade --install tempo tempo --repo https://grafana-community.github.io/helm-charts --version $(TEMPO_CHART) \
+	  -n monitoring -f monitoring/tempo-values.yaml --wait --timeout 5m >/dev/null
+	@kubectl -n monitoring get pods | grep tempo
 
 gateway-api:      ## Gateway API CRD (Service Mesh 과목 Linkerd 설치 전 필수) — Linkerd edge-26.9.3이 요구하는 버전. API Gateway 과목의 make envoy-gateway가 v1.6.1로 올린다
 	@kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API)/standard-install.yaml >/dev/null

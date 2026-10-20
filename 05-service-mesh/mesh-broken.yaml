@@ -1,0 +1,50 @@
+# 미션: 고장 난 메시 (Online Boutique, 네임스페이스 shop). 실습 6의 shop(Istio 주입 끝)에 적용한다
+# 목표: shop.localhost의 홈 · 상품(/product/OLJCESPC7Z) · 장바구니(/cart)가 20번 모두 200, istioctl analyze -n shop 문제없음
+# 지킬 것: 메시 안 서비스끼리는 mTLS만 받기(STRICT)는 그대로 둔다 · cartservice를 부를 수 있는 것은 frontend와 checkoutservice뿐
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: {name: default, namespace: shop}
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: {name: cartservice, namespace: shop}
+spec:
+  selector:
+    matchLabels: {app: cartservice}
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/shop/sa/checkoutservice"]
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: {name: productcatalogservice, namespace: shop}
+spec:
+  host: productcatalogservice
+  subsets:
+  - name: stable
+    labels: {app: productcatalog}
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: {name: productcatalogservice, namespace: shop}
+spec:
+  hosts: [productcatalogservice]
+  http:
+  - route:
+    - destination: {host: productcatalogservice, subset: stable}
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: {name: currencyservice, namespace: shop}
+spec:
+  hosts: [currencyservice]
+  http:
+  - fault:
+      abort: {percentage: {value: 50}, httpStatus: 503}
+    route:
+    - destination: {host: currencyservice}

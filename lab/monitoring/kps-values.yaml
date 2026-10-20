@@ -2,10 +2,16 @@
 # 접속: http://grafana.localhost (admin / 아래 비밀번호), http://prometheus.localhost, http://alertmanager.localhost
 grafana:
   adminPassword: lab-grafana            # 실습용. 운영에서는 Secret으로
-  additionalDataSources:               # 모니터링 과목 후반에 설치하는 Loki (설치 전에는 이 데이터 소스만 오류)
+  additionalDataSources:               # 모니터링 과목 후반에 설치하는 Loki·Tempo (설치 전에는 이 데이터 소스만 오류)
   - name: Loki
     type: loki
+    uid: loki
     url: http://loki.monitoring:3100
+    access: proxy
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://tempo.monitoring:3200
     access: proxy
   ingress:
     enabled: true

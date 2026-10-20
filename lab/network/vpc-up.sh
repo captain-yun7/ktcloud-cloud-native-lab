@@ -4,7 +4,7 @@
 #   db  = 프라이빗 서브넷 10.0.2.0/24의 서버 (10.0.2.10)
 #   VM 자신 = 인터넷 게이트웨이 (rt와 10.0.255.0/30으로 연결)
 # 사용: sudo bash vpc-up.sh            — 네트워킹 실습 시작 (빈 VPC)
-#       sudo bash vpc-up.sh --routed   — 이어서 시작 (실습 1·2까지 끝난 상태: 라우팅·NAT·web/db 서버)
+#       sudo bash vpc-up.sh --routed   — 이어서 시작 (실습 2가 끝난 상태: 라우팅·NAT·web/db 서버, 9080 DNAT 제외) — 실습 3·미션 도전·부록 A1
 # 지우기: sudo bash vpc-down.sh
 set -e
 [ "$(id -u)" = 0 ] || { echo "sudo로 실행하세요"; exit 1; }

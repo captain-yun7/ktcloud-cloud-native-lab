@@ -1,0 +1,14 @@
+# Grafana Tempo 단일 바이너리(실습용) — 모니터링 과목 트레이스 실습. make tracing
+# Istio 사이드카가 OTLP(4317)로 스팬을 보내고, Grafana의 Tempo 데이터 소스로 조회한다. 저장소는 파드 안 파일시스템(파드를 지우면 사라짐)
+tempo:
+  reportingEnabled: false
+  retention: 24h
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}

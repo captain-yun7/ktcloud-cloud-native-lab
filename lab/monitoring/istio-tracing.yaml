@@ -1,0 +1,12 @@
+# Istio 추적 설정 덧붙이기 — 모니터링 과목 트레이스 실습. istio/istio.yaml 위에 겹쳐 설치한다
+# 설치: istioctl install -f istio/istio.yaml -f monitoring/istio-tracing.yaml -y
+# 사이드카가 스팬을 보낼 곳(Tempo의 OTLP 4317)을 이름 "tempo"로 등록만 한다. 실제로 켜는 것은 Telemetry 리소스
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  meshConfig:
+    extensionProviders:
+    - name: tempo
+      opentelemetry:
+        service: tempo.monitoring.svc.cluster.local
+        port: 4317

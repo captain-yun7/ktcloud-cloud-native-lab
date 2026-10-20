@@ -1,0 +1,91 @@
+# 미션 2 자료: frontend v2 — Cymbal 브랜딩을 켠 카나리 버전 (차트의 frontend와 같고 라벨 version: v2, CYMBAL_BRANDING=true만 다름)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-v2
+  namespace: shop
+  labels:
+    app: frontend
+    version: v2
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v2
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: 'true'
+    spec:
+      serviceAccountName: frontend
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: server
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        image: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend:v0.10.7
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: /_healthz
+            port: 8080
+            httpHeaders:
+            - name: Cookie
+              value: shop_session-id=x-readiness-probe
+        livenessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: /_healthz
+            port: 8080
+            httpHeaders:
+            - name: Cookie
+              value: shop_session-id=x-liveness-probe
+        env:
+        - name: PORT
+          value: '8080'
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: productcatalogservice:3550
+        - name: CURRENCY_SERVICE_ADDR
+          value: currencyservice:7000
+        - name: CART_SERVICE_ADDR
+          value: cartservice:7070
+        - name: RECOMMENDATION_SERVICE_ADDR
+          value: recommendationservice:8080
+        - name: SHIPPING_SERVICE_ADDR
+          value: shippingservice:50051
+        - name: CHECKOUT_SERVICE_ADDR
+          value: checkoutservice:5050
+        - name: AD_SERVICE_ADDR
+          value: adservice:9555
+        - name: SHOPPING_ASSISTANT_SERVICE_ADDR
+          value: shoppingassistantservice:80
+        - name: ENV_PLATFORM
+          value: local
+        - name: CYMBAL_BRANDING
+          value: 'true'
+        - name: ENABLE_ASSISTANT
+          value: 'false'
+        - name: ENABLE_SINGLE_SHARED_SESSION
+          value: 'false'
+        resources:
+          limits:
+            cpu: 200m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+
