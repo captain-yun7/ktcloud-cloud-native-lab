@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# 네트워킹 과목: VM 안에 "빈 VPC"(10.0.0.0/16)를 만든다 — 네임스페이스·선·주소까지만. 라우팅·NAT·보안그룹은 수업에서 직접 넣는다
-#   rt  = VPC 라우터            web = 퍼블릭 서브넷 10.0.1.0/24의 서버 (10.0.1.10)
-#   db  = 프라이빗 서브넷 10.0.2.0/24의 서버 (10.0.2.10)
-#   VM 자신 = 인터넷 게이트웨이 (rt와 10.0.255.0/30으로 연결)
-# 사용: sudo bash vpc-up.sh            — 네트워킹 실습 시작 (빈 VPC)
-#       sudo bash vpc-up.sh --routed   — 이어서 시작 (실습 2가 끝난 상태: 라우팅·NAT·web/db 서버, 9080 DNAT 제외) — 실습 3·미션 도전·부록 A1
+# 네트워킹 과목: VM 안에 빈 사내망(10.0.0.0/16)을 만든다 — 네임스페이스·선·주소까지만. 라우팅·NAT·방화벽은 수업에서 직접 넣는다
+#   스크립트 이름과 출력의 "VPC" = 사내망 (이름·출력은 문서 실측과 맞추려고 그대로 둠)
+#   rt  = 사내 라우터            web = 웹 서브넷(DMZ) 10.0.1.0/24의 서버 (10.0.1.10)
+#   db  = DB 서브넷(내부망) 10.0.2.0/24의 서버 (10.0.2.10)
+#   VM 자신 = 인터넷 출구(회사 공유기 자리, rt와 10.0.255.0/30으로 연결)
+# 사용: sudo bash vpc-up.sh            — 네트워킹 실습 시작 (빈 사내망)
+#       sudo bash vpc-up.sh --routed   — 이어서 시작 (실습 3이 끝난 상태: 라우팅·NAT·web/db 서버, 9080 DNAT 제외) — 실습 4 · 부록(A1 · A3 · B1 · B2)
+#       sudo bash vpc-up.sh --az2      — --routed + 두 번째 서버 자리(두 번째 웹 서브넷 10.0.3.0/24, 서버 web-b 10.0.3.10) — 실습 5
 # 지우기: sudo bash vpc-down.sh
 set -e
 [ "$(id -u)" = 0 ] || { echo "sudo로 실행하세요"; exit 1; }
@@ -23,10 +25,10 @@ ip addr add 10.0.255.1/30 dev igw; ip link set igw up
 ip netns exec rt sysctl -qw net.ipv4.ip_forward=1
 # netns 안의 이름 풀이 (VM의 127.0.0.53은 네임스페이스 안에서 안 보인다)
 for n in web db; do mkdir -p /etc/netns/$n; echo "nameserver 8.8.8.8" > /etc/netns/$n/resolv.conf; done
-# Docker가 VM의 FORWARD를 기본 차단(DROP)해 둔다 → VPC 대역만 통과 허용 (Docker 권장 위치 DOCKER-USER)
+# Docker가 VM의 FORWARD를 기본 차단(DROP)해 둔다 → 사내망 대역만 통과 허용 (Docker 권장 위치 DOCKER-USER)
 iptables -C DOCKER-USER -s 10.0.0.0/16 -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -s 10.0.0.0/16 -j ACCEPT
 iptables -C DOCKER-USER -d 10.0.0.0/16 -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER -d 10.0.0.0/16 -j ACCEPT
-if [ "$1" = "--routed" ]; then
+if [ "$1" = "--routed" ] || [ "$1" = "--az2" ]; then
   ip -n web route add default via 10.0.1.1
   ip -n db route add default via 10.0.2.1
   ip -n rt route add default via 10.0.255.1
@@ -35,7 +37,17 @@ if [ "$1" = "--routed" ]; then
   serve(){ mkdir -p /tmp/vpc-$1 && echo "$1 $2" > /tmp/vpc-$1/index.html
     ip netns exec $1 sh -c "cd /tmp/vpc-$1 && nohup python3 -m http.server $3 >/dev/null 2>&1 &"; }
   serve web 10.0.1.10 80; serve db 10.0.2.10 5432
-  echo "라우팅·NAT·서버까지 준비 완료:"
+  if [ "$1" = "--az2" ]; then
+    ip netns add web-b; ip -n web-b link set lo up
+    link rt-webb rt webb0 web-b
+    ip -n rt addr add 10.0.3.1/24 dev rt-webb; ip -n rt link set rt-webb up
+    ip -n web-b addr add 10.0.3.10/24 dev webb0; ip -n web-b link set webb0 up
+    ip -n web-b route add default via 10.0.3.1
+    serve web-b 10.0.3.10 80
+    echo "라우팅·NAT·서버 + 두 번째 AZ(web-b)까지 준비 완료:"
+  else
+    echo "라우팅·NAT·서버까지 준비 완료:"
+  fi
 else
   echo "빈 VPC 준비 완료:"
 fi
