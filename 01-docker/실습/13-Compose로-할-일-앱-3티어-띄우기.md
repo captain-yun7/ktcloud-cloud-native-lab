@@ -30,6 +30,21 @@ todo-net
 - 실습 12 확인 문제 2에서 이미 지웠다면 `docker rm -f`는 아무것도 출력하지 않고, `network rm`은 `Error response from daemon: network todo-net not found`가 나옵니다. 이미 정리된 것이라 정상입니다
 - 컨테이너 둘에 명령 하나, 네트워크에 명령 하나 — 무엇을 만들었는지 내가 기억해서 지워야 합니다. 6단계에서 Compose는 이 일을 `docker compose down` 한 줄로 합니다
 
+**나. 폴더 둘러보기**
+
+```bash
+cd ~/ktcloud-cloud-native-lab/lab/docker/todo
+ls                        # api  web
+```
+
+**이렇게 나오면 성공**: `api  web` 두 폴더. 프롬프트가 `…/lab/docker/todo$`(api 폴더 **안이 아니라** todo 폴더).
+
+| 폴더·이미지 | 역할 |
+|---|---|
+| `web/` (nginx) | 화면(HTML·JS)을 주고, `/api/`로 오는 요청은 `api:3000`으로 넘김 |
+| `api/` (Node) | 실습 12의 API |
+| `postgres:17-alpine` | DB. 빌드 없이 공식 이미지 사용 |
+
 ## 2단계. compose.yaml 쓰기
 
 `todo` 폴더에서 nano로 `compose.yaml`을 만듭니다.
