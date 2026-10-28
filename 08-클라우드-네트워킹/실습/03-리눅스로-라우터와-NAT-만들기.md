@@ -161,7 +161,7 @@ db curl -s -m 4 -o /dev/null -w "%{http_code}\n" http://1.1.1.1
 000
 ```
 
-길은 다 있는데 왜 응답이 없을까요. VM의 바깥쪽 네트워크 인터페이스(`eth0`)을 지나가는 패킷을 엿봅니다.
+길은 다 있는데 왜 응답이 없을까요. VM의 바깥쪽 네트워크 인터페이스(`eth0`)를 지나가는 패킷을 엿봅니다.
 
 ```bash
 sudo timeout 8 tcpdump -lni eth0 -c 2 'host 1.1.1.1 and tcp' & sleep 1; db curl -s -m 3 -o /dev/null http://1.1.1.1; wait
