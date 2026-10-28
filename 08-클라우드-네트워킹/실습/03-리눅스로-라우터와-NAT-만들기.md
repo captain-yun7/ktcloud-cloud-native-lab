@@ -161,13 +161,13 @@ db curl -s -m 4 -o /dev/null -w "%{http_code}\n" http://1.1.1.1
 000
 ```
 
-길은 다 있는데 왜 응답이 없을까요. VM의 바깥 선(`eth0`)을 지나가는 패킷을 엿봅니다.
+길은 다 있는데 왜 응답이 없을까요. VM의 바깥쪽 네트워크 인터페이스(`eth0`)을 지나가는 패킷을 엿봅니다.
 
 ```bash
 sudo timeout 8 tcpdump -lni eth0 -c 2 'host 1.1.1.1 and tcp' & sleep 1; db curl -s -m 3 -o /dev/null http://1.1.1.1; wait
 ```
 
-**이 명령은**: `tcpdump` = 선을 지나가는 패킷을 보여 줌. 뒤에서(`&`) 켜 두고 1초 뒤 db에서 다시 접속, 패킷 2개를 보거나 8초가 지나면 끝.
+**이 명령은**: `tcpdump` = 네트워크 인터페이스를 지나가는 패킷을 보여 줌. 뒤에서(`&`) 켜 두고 1초 뒤 db에서 다시 접속, 패킷 2개를 보거나 8초가 지나면 끝.
 
 **이렇게 나오면 성공** (시각·`41442` 같은 번호는 다름)
 
@@ -185,7 +185,7 @@ sudo timeout 8 tcpdump -lni eth0 -c 2 'host 1.1.1.1 and tcp' & sleep 1; db curl 
 | 화면 | 원인 | 해결 |
 |---|---|---|
 | `RTNETLINK answers: File exists` | 이미 넣음 | 그대로 진행 |
-| `tcpdump: eth0: No such device exists` | VM 바깥 선 이름이 다름 | `ip route \| grep default`의 `dev` 다음 이름으로 |
+| `tcpdump: eth0: No such device exists` | VM 바깥쪽 인터페이스 이름이 다름 | `ip route \| grep default`의 `dev` 다음 이름으로 |
 | tcpdump에 아무것도 안 나오고 8초 뒤 끝 | 1줄(rt 기본 경로)을 빠뜨려 패킷이 VM까지 안 옴 | `rt ip route`에 `default via 10.0.255.1` |
 | 프롬프트가 흐트러짐 | 뒤에서 돈 tcpdump가 출력을 섞음 | Enter 한 번 |
 

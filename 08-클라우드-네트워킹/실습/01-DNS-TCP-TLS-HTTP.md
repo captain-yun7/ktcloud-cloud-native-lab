@@ -136,7 +136,7 @@ sudo -v
 sudo timeout 8 tcpdump -lni eth0 -c 3 'tcp port 80 and host example.com' & sleep 1; curl -s -o /dev/null -w "%{http_code}\n" http://example.com; wait
 ```
 
-**이 명령은**: 1줄 = sudo 비밀번호를 미리(물으면 VM 비밀번호). 2줄 = 뒤에서 tcpdump가 VM 바깥 선(`eth0`)의 `example.com` 80번 패킷 **처음 3개**를 찍는 동안(`&`), 1초 뒤 curl로 `http://example.com`에 접속.
+**이 명령은**: 1줄 = sudo 비밀번호를 미리(물으면 VM 비밀번호). 2줄 = 뒤에서 tcpdump가 VM의 바깥쪽 네트워크 인터페이스(`eth0`)의 `example.com` 80번 패킷 **처음 3개**를 찍는 동안(`&`), 1초 뒤 curl로 `http://example.com`에 접속.
 
 **이렇게 나오면 성공** (주소·포트·시각·숫자는 달라도 됨)
 
@@ -163,7 +163,7 @@ listening on eth0, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 | 화면 | 원인 | 해결 |
 |---|---|---|
 | `[1]+ Stopped` 후 멈춤 | sudo가 비밀번호를 물어 뒤에서 멈춤 | `fg` → 비밀번호 → Ctrl+C. 1줄 `sudo -v`부터 다시 |
-| `0 packets captured` | 다른 선을 봄, 또는 curl이 먼저 끝남 | `ip -br addr`로 `10.10.1.N`이 붙은 선 이름 확인. 2줄 다시 |
+| `0 packets captured` | 다른 인터페이스를 봄, 또는 curl이 먼저 끝남 | `ip -br addr`로 `10.10.1.N`이 붙은 인터페이스 이름 확인. 2줄 다시 |
 | `[S]`만 여러 번, `[S.]` 없음 | 답이 안 옴(길이나 방화벽) | 이 단계에서는 정상적으로 안 나옴. 질문 |
 
 </details>
