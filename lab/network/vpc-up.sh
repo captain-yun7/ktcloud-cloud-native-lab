@@ -6,7 +6,7 @@
 #   VM 자신 = 인터넷 출구(회사 공유기 자리, rt와 10.0.255.0/30으로 연결)
 # 사용: sudo bash vpc-up.sh            — 네트워킹 실습 시작 (빈 사내망)
 #       sudo bash vpc-up.sh --routed   — 이어서 시작 (실습 3이 끝난 상태: 라우팅·NAT·web/db 서버, 9080 DNAT 제외) — 실습 4 · 부록(A1 · A3 · B1 · B2)
-#       sudo bash vpc-up.sh --az2      — --routed + 두 번째 서버 자리(두 번째 웹 서브넷 10.0.3.0/24, 서버 web-b 10.0.3.10) — 실습 5
+#       sudo bash vpc-up.sh --az2      — --routed + 두 번째 서버 자리(두 번째 웹 서브넷 10.0.3.0/24, 서버 web-b 10.0.3.10) — 검증용(D-31에 실습 삭제)
 # 지우기: sudo bash vpc-down.sh
 set -e
 [ "$(id -u)" = 0 ] || { echo "sudo로 실행하세요"; exit 1; }
